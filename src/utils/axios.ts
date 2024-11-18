@@ -1,8 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError, AxiosRequestHeaders } from "axios";
-
-const REMOTE_SERVER_IP = "";
-const LOCAL_SERVER_IP = "127.0.0.1";
-
+import { REMOTE_SERVER_IP, LOCAL_SERVER_IP } from "./ipAddress";
 
 // 创建 Axios 实例
 const axiosInstance: AxiosInstance = axios.create({

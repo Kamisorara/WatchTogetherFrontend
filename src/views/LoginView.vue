@@ -59,6 +59,7 @@ const showLoginFailNotification = () => {
 const showLoginSuccessNotification = () => {
   notification.success({
     message: `登录成功`,
+    duration: 2,
     description: '欢迎回来',
     placement: 'topLeft',
   });
@@ -163,17 +164,17 @@ onMounted(() => {
 const onSubmit = async (event: Event) => {
   event.preventDefault(); // 阻止默认提交行为
   try {
-    const response: any = await login(form.username, form.password);
-    if (response.success) {
+    const res: any = await login(form.username, form.password);
+    if (res.success) {
       showLoginSuccessNotification();
-      localStorage.setItem('token', response.message.token);
+      localStorage.setItem('token', res.message.token);
       setTimeout(() => {
         router.push("/home");
       }, 1500);
     } else {
       showLoginFailNotification();
     }
-    console.log(response);
+    console.log(res);
   } catch (error) {
     console.log("登录失败", error);
   }

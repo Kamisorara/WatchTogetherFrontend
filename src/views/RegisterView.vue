@@ -66,6 +66,7 @@ const showRegisterSuccessNotification = () => {
   notification.success({
     message: `注册成功`,
     description: '请前往登录',
+    duration: 2,
     placement: 'topLeft',
   });
 };
@@ -162,9 +163,9 @@ onMounted(() => {
 const onSubmit = async (event: Event) => {
   event.preventDefault(); // 阻止默认提交行为
   try {
-    const response: any = await register(form.username, form.password, form.passwordRepeat, form.email);
-    console.log(response);
-    if (response.success) {
+    const res: any = await register(form.username, form.password, form.passwordRepeat, form.email);
+    console.log(res);
+    if (res.success) {
       showRegisterSuccessNotification();
       setTimeout(() => {
         router.push('/');
