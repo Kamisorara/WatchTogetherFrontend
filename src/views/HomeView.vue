@@ -114,7 +114,8 @@
           您的浏览器不支持视频播放。
         </video> -->
         <div v-if="!stompClient" class="chat-content-video-none">WebSocket未连接</div>
-        <VideoPlayer v-if="stompClient" class="chat-content-video" :stompClient="stompClient"
+        <!-- 不用管这个error -->
+        <VideoPlayer v-if="stompClient" class="chat-content-video" :stompClient="(stompClient as Client)"
           :roomCode="roomCode" />
       </div>
     </div>
