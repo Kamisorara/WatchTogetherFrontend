@@ -26,7 +26,7 @@
             </template>
             <!-- 使用 button 作为触发器 -->
             <!-- <a-button></a-button> -->
-            <PlusCircleOutlined spin style="font-size: 30px;" />
+            <PlusCircleOutlined :spin="false" style="font-size: 30px;" />
           </a-popover>
         </a-popover>
       </div>
@@ -58,13 +58,13 @@
             </template>
             <!-- 使用 button 作为触发器 -->
             <!-- <a-button></a-button> -->
-            <PlusCircleOutlined spin style="font-size: 30px;" />
+            <SearchOutlined :spin="false" style="font-size: 30px;" />
           </a-popover>
         </a-popover>
       </div>
     </div>
 
-    <!-- Channel List Section with Scroll -->
+    <!-- 用户列表 -->
     <div class="channel">
       <div class="channel-list">
         <div v-for="otherUser, index in otherUserList" class="channel-item" :key="index">
@@ -82,7 +82,7 @@
           </div>
         </div>
       </div>
-      <!-- Fixed Current User at the bottom -->
+      <!-- 个人 -->
       <div class="current-user">
         <div class="user-info">
           <a-avatar :size="32" :src="person.avatar">
@@ -94,7 +94,7 @@
           <div class="user-info-icon">
             <AudioOutlined class="info-icon" />
             <PhoneOutlined class="info-icon" />
-            <SettingOutlined class="info-icon" />
+            <SettingOutlined class="info-icon" @click="showSettingsDrawer" />
           </div>
         </div>
       </div>
@@ -119,14 +119,68 @@
           :roomCode="roomCode" />
       </div>
     </div>
+    <!-- 设置下拉栏 -->
   </div>
+  <a-drawer class="settings-drawer" :width="500" title="设置" :placement="placement" :open="settingsDrawerOpen"
+    @close="closeSettingsDrawer">
+    <template #extra>
+    </template>
+    <a-card class="settings-drawer-account" :loading="accountMessageLoading" hoverable title="账号信息">
+      <!-- 头像 -->
+      <div style="display: flex;justify-content: center; align-items: center;">
+        <a-upload style="cursor: pointer;" v-model:file-list="avatarFileList" name="file" :show-upload-list="false"
+          action="http://localhost:8080/api/sys/fastdfs-upload" :before-upload="beforeUpload" :headers="uploadHeaders"
+          @change="handleUploadChange">
+          <a-avatar v-if="userAccountDetailFromState.userAvatar === ''" :size="64"
+            :src="userAccountDetailFromState.userAvatar">
+            <template #icon>
+              <UserOutlined />
+            </template>
+          </a-avatar>
+          <div v-else>
+            <loading-outlined v-if="avatarUploading"></loading-outlined>
+            <plus-outlined v-else></plus-outlined>
+            <div class="ant-upload-text">Upload</div>
+          </div>
+        </a-upload>
+      </div>
+      <div>
+      </div>
+      <a-form style="margin-top: 20px;" v-bind="userAccountDetailFromLayout" :model="userAccountDetailFromState"
+        name="userDetailMessage" @finish="onUserAccountFromFinish">
+        <a-form-item name="id" label="id">
+          <a-input disabled v-model:value="userAccountDetailFromState.id" />
+        </a-form-item>
+        <a-form-item name="username" label="用户名">
+          <a-input disabled v-model:value="userAccountDetailFromState.username" />
+        </a-form-item>
+        <a-form-item name="userEmail" label="邮箱">
+          <a-input disabled v-model:value="userAccountDetailFromState.userEmail" />
+        </a-form-item>
+        <a-form-item name="userPhtone" label="手机号">
+          <a-input v-model:value="userAccountDetailFromState.userPhone" />
+        </a-form-item>
+        <a-form-item name="userSex" label="性别">
+          <a-radio-group v-model:value="userAccountDetailFromState.userSex">
+            <a-radio value="0">男</a-radio>
+            <a-radio value="1">女</a-radio>
+            <a-radio value="2">未知</a-radio>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item :wrapper-col="{ span: 12, offset: 15 }">
+          <a-button type="primary" html-type="submit">提交修改</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+    <a-card class="settings-drawer-details" :loading="detailsMessageLoading" hoverable title="修改密码">...</a-card>
+  </a-drawer>
 </template>
 
 <script lang="ts" setup>
 import { reactive, ref, onBeforeUnmount } from 'vue';
-import { AudioOutlined, PhoneOutlined, SettingOutlined, PlusCircleOutlined, CheckOutlined, UserOutlined } from "@ant-design/icons-vue"
+import { AudioOutlined, PhoneOutlined, SettingOutlined, PlusCircleOutlined, CheckOutlined, UserOutlined, SearchOutlined, LoadingOutlined, PlusOutlined } from "@ant-design/icons-vue"
 import { createRoom, joinRoom } from '../api/wt/roomApi.ts';
-import { notification } from 'ant-design-vue';
+import { notification, DrawerProps, UploadChangeParam, message, UploadFile } from 'ant-design-vue';
 import { LOCAL_WEBSOCKET_SERVER_URL } from '../utils/ipAddress.ts';
 import SockJS from "sockjs-client";
 import { Stomp, Client } from "@stomp/stompjs";
@@ -144,7 +198,100 @@ interface User {
   avatar: string;
 }
 
+interface userDetailsMessage {
+  id: string;
+  username: string;
+  userEmail: string;
+  userPhone: string;
+  userAvatar: string;
+  userCreateTime: string;
+  userNickName: string;
+  userSex: string;
+}
 
+// 用户信息
+const userAccountDetailFromState = reactive<userDetailsMessage>({
+  id: '12345',
+  username: "Kamisora",
+  userEmail: "rakamiso575@gmail.com",
+  userPhone: "",
+  userAvatar: "",
+  userCreateTime: "",
+  userNickName: "",
+  userSex: "2",
+});
+
+//图片上传
+const avatarFileList = ref([]);
+const avatarUploading = ref<boolean>(false);
+const uploadHeaders = ref({
+  token: localStorage.getItem("token")
+})
+
+const handleUploadChange = (info: UploadChangeParam) => {
+  if (info.file.status === 'uploading') {
+    avatarUploading.value = true;
+    return;
+  }
+  if (info.file.status === 'done') {
+    // Get this url from response in real world.
+    console.log(info.file.response);
+    if (info.file.response.success) {
+      message.success("头像更换成功");
+    }
+  }
+  if (info.file.status === 'error') {
+    avatarUploading.value = false;
+    message.error("上传图片时发生错误");
+  }
+};
+
+const beforeUpload = (file: UploadFile): boolean => {
+  if (!file.type) {
+    message.error('Unable to determine file type!');
+    return false;
+  }
+
+  const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
+  if (!isJpgOrPng) {
+    message.error('You can only upload JPG or PNG file!');
+    return false;
+  }
+  // 文件大小限制为2MB
+  const isLt2M = file.size! / 1024 / 1024 < 2;
+  if (!isLt2M) {
+    message.error('Image must smaller than 2MB!');
+    return false;
+  }
+
+  return true;
+};
+
+// 侧拉栏
+const onUserAccountFromFinish = (values: any) => {
+  console.log('Success:', values);
+};
+
+const userAccountDetailFromLayout = {
+  labelCol: { span: 6 },
+  wrapperCol: { span: 14 },
+};
+
+const placement = ref<DrawerProps['placement']>('left');
+const settingsDrawerOpen = ref<boolean>(false);
+const showSettingsDrawer = () => {
+  settingsDrawerOpen.value = true;
+}
+
+const closeSettingsDrawer = () => {
+  settingsDrawerOpen.value = false;
+}
+
+// 个人信息加载
+const accountMessageLoading = ref<boolean>(false);
+const detailsMessageLoading = ref<boolean>(false);
+
+// 房间创建加入
 const createRoomClicked = ref<boolean>(false);
 const createRoomHovered = ref<boolean>(false);
 const isInRoom = ref<boolean>(false);
@@ -232,16 +379,16 @@ const person = reactive<User>({
   id: "123", username: "Atas", avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQZRXnKW-qw36dDDqtzvwc_WrhWPENEf62gzg&s"
 });
 
-// Reactive properties
-const stompClient = ref<Client | null>(null); // WebSocket Client
 
-// Connect to WebSocket server
+const stompClient = ref<Client | null>(null);
+
+
 const connectToWebSocketServer = (room: string) => {
   const socket = new SockJS(LOCAL_WEBSOCKET_SERVER_URL);
   const stomp = Stomp.over(socket);
   stomp.connect(
     {
-      token: localStorage.getItem("token"), // Assuming token is stored in localStorage
+      token: localStorage.getItem("token"),
       roomCode: room,
     },
     () => {
@@ -253,7 +400,6 @@ const connectToWebSocketServer = (room: string) => {
     }
   );
 
-  // Cleanup on unmount
   onBeforeUnmount(() => {
     if (stompClient.value) {
       stompClient.value.onDisconnect = () => {
@@ -508,5 +654,21 @@ const onJoinRoom = async () => {
   /* 根据需要调整为 contain 或 fill */
   border-radius: 15px;
   /* 保持圆角样式 */
+}
+
+.settings-drawer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-drawer-account {
+  cursor: auto;
+}
+
+.settings-drawer-details {
+  margin-top: 20px;
+  cursor: auto;
 }
 </style>
