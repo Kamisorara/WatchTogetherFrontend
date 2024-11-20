@@ -7,7 +7,7 @@
 
     <!-- 右侧内容 -->
     <div class="right-section">
-      <a-card style="width: 350px;" hoverable>
+      <a-card style="width: 350px; cursor:auto;" hoverable>
         <a-form :model="form" autocomplete="off" @finish="onFinish" @finishFailed="onFinishFailed" layout="vertical"
           class="login-form" @submit="onSubmit">
           <a-form-item name="username" label="用户名" :rules="rules.username">
