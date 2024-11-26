@@ -131,7 +131,7 @@
         <a-upload style="cursor: pointer;" v-model:file-list="avatarFileList" name="file" :show-upload-list="false"
           action="http://localhost:8080/api/sys/fastdfs-upload" :before-upload="beforeUpload" :headers="uploadHeaders"
           @change="handleUploadChange">
-          <a-avatar v-if="userAccountDetailFromState.userAvatar === ''" :size="64"
+          <a-avatar v-if="userAccountDetailFromState.userAvatar !== ''" :size="64"
             :src="userAccountDetailFromState.userAvatar">
             <template #icon>
               <UserOutlined />
@@ -152,7 +152,7 @@
           <a-input disabled v-model:value="userAccountDetailFromState.id" />
         </a-form-item>
         <a-form-item name="username" label="用户名">
-          <a-input disabled v-model:value="userAccountDetailFromState.username" />
+          <a-input disabled v-model:value="userAccountDetailFromState.userName" />
         </a-form-item>
         <a-form-item name="userEmail" label="邮箱">
           <a-input disabled v-model:value="userAccountDetailFromState.userEmail" />
@@ -177,7 +177,7 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref, onBeforeUnmount } from 'vue';
+import { reactive, ref, onBeforeUnmount, onMounted } from 'vue';
 import { AudioOutlined, PhoneOutlined, SettingOutlined, PlusCircleOutlined, CheckOutlined, UserOutlined, SearchOutlined, LoadingOutlined, PlusOutlined } from "@ant-design/icons-vue"
 import { createRoom, joinRoom } from '../api/wt/roomApi.ts';
 import { notification, DrawerProps, UploadChangeParam, message, UploadFile } from 'ant-design-vue';
@@ -185,6 +185,7 @@ import { LOCAL_WEBSOCKET_SERVER_URL } from '../utils/ipAddress.ts';
 import SockJS from "sockjs-client";
 import { Stomp, Client } from "@stomp/stompjs";
 import VideoPlayer from "../components/VideoPlayer.vue";
+import { getUserInfoFromToken } from '../api/sys/userApi.ts';
 
 interface OhterUser {
   id: string;
@@ -200,7 +201,7 @@ interface User {
 
 interface userDetailsMessage {
   id: string;
-  username: string;
+  userName: string;
   userEmail: string;
   userPhone: string;
   userAvatar: string;
@@ -210,9 +211,9 @@ interface userDetailsMessage {
 }
 
 // 用户信息
-const userAccountDetailFromState = reactive<userDetailsMessage>({
+let userAccountDetailFromState = reactive<userDetailsMessage>({
   id: '12345',
-  username: "Kamisora",
+  userName: "Kamisora",
   userEmail: "rakamiso575@gmail.com",
   userPhone: "",
   userAvatar: "",
@@ -237,7 +238,8 @@ const handleUploadChange = (info: UploadChangeParam) => {
     // Get this url from response in real world.
     console.log(info.file.response);
     if (info.file.response.success) {
-      message.success("头像更换成功");
+      avatarUploading.value = false;
+      message.success("头像更换成功，刷新页面查看");
     }
   }
   if (info.file.status === 'error') {
@@ -410,6 +412,19 @@ const connectToWebSocketServer = (room: string) => {
   });
 };
 
+onMounted(() => {
+  getUserInfo();
+});
+
+// 从Token中获取用户信息
+const getUserInfo = async () => {
+  const res: any = await getUserInfoFromToken();
+  console.log(res);
+  const userInfo: userDetailsMessage = res.message;
+  if (res.success) {
+    userAccountDetailFromState = reactive(userInfo);
+  }
+}
 
 const onCreateRoom = async () => {
   try {

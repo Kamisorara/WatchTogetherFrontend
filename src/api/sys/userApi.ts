@@ -9,3 +9,8 @@ export const login = (username: string, password: string) => {
 export const register = (username: string, password: string, passwordRepeat: string, email: string) => {
   return axiosInstance.post(`/api/sys/register?username=${username}&password=${password}&passwordRepeat=${passwordRepeat}&email=${email}`);
 }
+
+// 根据Token获取用户信息
+export const getUserInfoFromToken = () => {
+  return axiosInstance.get(`/api/sys/user-info`);
+}
