@@ -14,3 +14,8 @@ export const register = (username: string, password: string, passwordRepeat: str
 export const getUserInfoFromToken = () => {
   return axiosInstance.get(`/api/sys/user-info`);
 }
+
+// 更新用户基本信息
+export const updateUserDetailInfo = (userPhone: string, userSex: string) => {
+  return axiosInstance.post(`/api/sys/update-userDetailInfo?userPhone=${userPhone}&userSex=${userSex}`);
+}

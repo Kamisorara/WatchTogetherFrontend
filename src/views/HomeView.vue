@@ -147,7 +147,7 @@
       <div>
       </div>
       <a-form style="margin-top: 20px;" v-bind="userAccountDetailFromLayout" :model="userAccountDetailFromState"
-        name="userDetailMessage" @finish="onUserAccountFromFinish">
+        name="userDetailMessage" @finish="onUserAccountFromFinish" @submit="onUpdateUserDetailSubmit">
         <a-form-item name="id" label="id">
           <a-input disabled v-model:value="userAccountDetailFromState.id" />
         </a-form-item>
@@ -185,7 +185,7 @@ import { LOCAL_WEBSOCKET_SERVER_URL } from '../utils/ipAddress.ts';
 import SockJS from "sockjs-client";
 import { Stomp, Client } from "@stomp/stompjs";
 import VideoPlayer from "../components/VideoPlayer.vue";
-import { getUserInfoFromToken } from '../api/sys/userApi.ts';
+import { getUserInfoFromToken, updateUserDetailInfo } from '../api/sys/userApi.ts';
 
 interface OhterUser {
   id: string;
@@ -425,6 +425,24 @@ const getUserInfo = async () => {
     userAccountDetailFromState = reactive(userInfo);
   }
 }
+
+// 提交用户更新操作
+const onUpdateUserDetailSubmit = async (event: Event) => {
+  event.preventDefault(); // 阻止默认提交行为
+  try {
+    const res: any = await updateUserDetailInfo(userAccountDetailFromState.userPhone, userAccountDetailFromState.userSex);
+    if (res.success) {
+      notification.success({
+        message: res.message,
+        duration: 2,
+        placement: 'topRight',
+      });
+    }
+    console.log(res);
+  } catch (error) {
+    console.log("更新资料失败", error);
+  }
+};
 
 const onCreateRoom = async () => {
   try {
