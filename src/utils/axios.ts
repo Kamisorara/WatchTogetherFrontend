@@ -10,18 +10,22 @@ const axiosInstance: AxiosInstance = axios.create({
 // 请求拦截器：可以在请求头添加 token 等认证信息
 axiosInstance.interceptors.request.use(
   (config: any) => {
-    const token = localStorage.getItem('token'); // 从 localStorage 获取 token
+    // 登录和注册等操作不需要进行携带token
+    if (config.url.includes('/api/sys/login') || config.url.includes("/api/sys/register")) {
+      delete config.headers['token'];
+    } else {
+      const token = localStorage.getItem('token'); // 从 localStorage 获取 token
 
-    // 如果 headers 为 undefined，初始化为一个空对象
-    if (!config.headers) {
-      config.headers = {} as AxiosRequestHeaders;
+      // 如果 headers 为 undefined，初始化为一个空对象
+      if (!config.headers) {
+        config.headers = {} as AxiosRequestHeaders;
+      }
+
+      // 如果 token 存在，添加到 headers 中
+      if (token) {
+        (config.headers as AxiosRequestHeaders)['token'] = token;
+      }
     }
-
-    // 如果 token 存在，添加到 headers 中
-    if (token) {
-      (config.headers as AxiosRequestHeaders)['token'] = token;
-    }
-
     return config;
   },
   (error: AxiosError) => {

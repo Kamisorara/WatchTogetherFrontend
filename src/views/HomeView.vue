@@ -227,7 +227,7 @@ const avatarFileList = ref([]);
 const avatarUploading = ref<boolean>(false);
 const uploadHeaders = ref({
   token: localStorage.getItem("token")
-})
+});
 
 const handleUploadChange = (info: UploadChangeParam) => {
   if (info.file.status === 'uploading') {
