@@ -186,6 +186,7 @@ import SockJS from "sockjs-client";
 import { Stomp, Client } from "@stomp/stompjs";
 import VideoPlayer from "../components/VideoPlayer.vue";
 import { getUserInfoFromToken, updateUserDetailInfo } from '../api/sys/userApi.ts';
+import { configConsumerProps } from 'ant-design-vue/es/config-provider/index';
 
 interface OhterUser {
   id: string;
@@ -395,6 +396,17 @@ const connectToWebSocketServer = (room: string) => {
     },
     () => {
       console.log("Connected to WebSocket server");
+
+      // 连接成功后订阅主题
+      stomp.subscribe(`/topic/room/${room}`, (message) => {
+        const payload = JSON.parse(message.body);
+        console.log(payload);
+        if (payload.type === "USER_CHANGE") {
+          console.log("用户发生变动");
+          // TODO 刷新房间用户
+        }
+      });
+
       stompClient.value = stomp;
     },
     (error: any) => {
