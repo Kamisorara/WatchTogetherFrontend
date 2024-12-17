@@ -92,8 +92,9 @@
           </a-avatar>
           <div class="user-info-username">{{ person.userName }}</div>
           <div class="user-info-icon">
-            <AudioOutlined class="info-icon" />
-            <PhoneOutlined class="info-icon" />
+            <!-- TODO 实现语音的开启和关闭 -->
+            <!-- <AudioMutedOutlined class="info-icon" /> -->
+            <AudioSync class="info-icon" />
             <SettingOutlined class="info-icon" @click="showSettingsDrawer" />
           </div>
         </div>
@@ -178,13 +179,14 @@
 
 <script lang="ts" setup>
 import { reactive, ref, onBeforeUnmount, onMounted } from 'vue';
-import { AudioOutlined, PhoneOutlined, SettingOutlined, PlusCircleOutlined, CheckOutlined, UserOutlined, SearchOutlined, LoadingOutlined, PlusOutlined } from "@ant-design/icons-vue"
+import { AudioMutedOutlined, AudioOutlined, PhoneOutlined, SettingOutlined, PlusCircleOutlined, CheckOutlined, UserOutlined, SearchOutlined, LoadingOutlined, PlusOutlined } from "@ant-design/icons-vue"
 import { createRoom, joinRoom, getUserDetailsInRoom } from '../api/wt/roomApi.ts';
 import { notification, DrawerProps, UploadChangeParam, message, UploadFile } from 'ant-design-vue';
 import { LOCAL_WEBSOCKET_SERVER_URL } from '../utils/ipAddress.ts';
 import SockJS from "sockjs-client";
 import { Stomp, Client } from "@stomp/stompjs";
 import VideoPlayer from "../components/VideoPlayer.vue";
+import AudioSync from '../components/AudioSync.vue';
 import { getUserInfoFromToken, updateUserDetailInfo } from '../api/sys/userApi.ts';
 
 interface OhterUser {
