@@ -212,9 +212,9 @@ interface userDetailsMessage {
 
 // 用户信息
 let userAccountDetailFromState = ref<userDetailsMessage>({
-  id: '12345',
-  userName: "Kamisora",
-  userEmail: "rakamiso575@gmail.com",
+  id: "",
+  userName: "",
+  userEmail: "",
   userPhone: "",
   userAvatar: "",
   userCreateTime: "",
@@ -372,7 +372,7 @@ const showJoinRoomFailNotification = () => {
 let otherUserList = ref<OhterUser[]>([]);
 
 let person = ref<User>({
-  id: "123", userName: "Atas", userAvatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQZRXnKW-qw36dDDqtzvwc_WrhWPENEf62gzg&s"
+  id: "", userName: "", userAvatar: ""
 });
 
 // 获取房间内其余用户
