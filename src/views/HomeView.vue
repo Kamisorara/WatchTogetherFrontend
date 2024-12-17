@@ -85,12 +85,12 @@
       <!-- 个人 -->
       <div class="current-user">
         <div class="user-info">
-          <a-avatar :size="32" :src="person.avatar">
+          <a-avatar :size="32" :src="person.userAvatar">
             <template #icon>
               <UserOutlined />
             </template>
           </a-avatar>
-          <div class="user-info-username">{{ person.username }}</div>
+          <div class="user-info-username">{{ person.userName }}</div>
           <div class="user-info-icon">
             <AudioOutlined class="info-icon" />
             <PhoneOutlined class="info-icon" />
@@ -195,8 +195,8 @@ interface OhterUser {
 
 interface User {
   id: string;
-  username: string;
-  avatar: string;
+  userName: string;
+  userAvatar: string;
 }
 
 interface userDetailsMessage {
@@ -211,7 +211,7 @@ interface userDetailsMessage {
 }
 
 // 用户信息
-let userAccountDetailFromState = reactive<userDetailsMessage>({
+let userAccountDetailFromState = ref<userDetailsMessage>({
   id: '12345',
   userName: "Kamisora",
   userEmail: "rakamiso575@gmail.com",
@@ -369,12 +369,10 @@ const showJoinRoomFailNotification = () => {
 }
 
 
-let otherUserList = reactive<OhterUser[]>([
-  { id: "1", userName: "AA", userAvatar: "" },
-]);
+let otherUserList = ref<OhterUser[]>([]);
 
-const person = reactive<User>({
-  id: "123", username: "Atas", avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQZRXnKW-qw36dDDqtzvwc_WrhWPENEf62gzg&s"
+let person = ref<User>({
+  id: "123", userName: "Atas", userAvatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQZRXnKW-qw36dDDqtzvwc_WrhWPENEf62gzg&s"
 });
 
 // 获取房间内其余用户
@@ -384,7 +382,7 @@ const getOhterUserDetailsInRoom = async (roomCode: string) => {
   if (res.success) {
     console.log("获取成功");
     // 清空原有数组并添加新数据
-    otherUserList.splice(0, otherUserList.length, ...res.message);
+    otherUserList.value = res.message;
   }
 }
 
@@ -440,9 +438,9 @@ onMounted(() => {
 const getUserInfo = async () => {
   const res: any = await getUserInfoFromToken();
   console.log(res);
-  const userInfo: userDetailsMessage = res.message;
   if (res.success) {
-    userAccountDetailFromState = reactive(userInfo);
+    userAccountDetailFromState.value = res.message;
+    person.value = res.message
   }
 }
 
@@ -450,7 +448,7 @@ const getUserInfo = async () => {
 const onUpdateUserDetailSubmit = async (event: Event) => {
   event.preventDefault(); // 阻止默认提交行为
   try {
-    const res: any = await updateUserDetailInfo(userAccountDetailFromState.userPhone, userAccountDetailFromState.userSex);
+    const res: any = await updateUserDetailInfo(userAccountDetailFromState.value.userPhone, userAccountDetailFromState.value.userSex);
     if (res.success) {
       notification.success({
         message: res.message,
