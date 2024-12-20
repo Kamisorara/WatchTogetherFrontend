@@ -47,7 +47,9 @@ import { ref, onMounted, reactive } from 'vue';
 import { login } from '../api/sys/userApi';
 import { useRouter } from 'vue-router';
 import { notification } from 'ant-design-vue';
+import { getUserInfoFromToken } from '../api/sys/userApi';
 
+// 登陆失败提示
 const showLoginFailNotification = () => {
   notification.error({
     message: `登录失败`,
@@ -56,6 +58,7 @@ const showLoginFailNotification = () => {
   });
 };
 
+// 登录成功提示
 const showLoginSuccessNotification = () => {
   notification.success({
     message: `登录成功`,
@@ -65,6 +68,14 @@ const showLoginSuccessNotification = () => {
   });
 };
 
+// Token验证成功提示
+const showVerifyingTokenSuccessNotification = () => {
+  notification.success({
+    message: `欢迎回来!`,
+    duration: 2,
+    placement: 'topRight',
+  });
+};
 
 const router = useRouter();
 
@@ -158,6 +169,9 @@ onMounted(() => {
     requestAnimationFrame(animate); // 持续更新小球位置
   };
   animate();
+
+  // 校验Token，如果有Token跳转主页
+  verifyToken();
 });
 
 // 登录操作
@@ -179,6 +193,19 @@ const onSubmit = async (event: Event) => {
     console.log("登录失败", error);
   }
 };
+
+// 校验Token
+const verifyToken = async () => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    const res: any = await getUserInfoFromToken();
+    if (res.message.id) {
+      showVerifyingTokenSuccessNotification();
+      router.push("/home");
+    }
+    console.log(res);
+  }
+}
 </script>
 
 <style scoped>

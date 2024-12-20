@@ -94,7 +94,7 @@
           <div class="user-info-icon">
             <!-- TODO 实现语音的开启和关闭 -->
             <!-- <AudioMutedOutlined class="info-icon" /> -->
-            <AudioSync class="info-icon" />
+            <AudioSync class="info-icon" :stomp-clinet="(stompClient as Client)" :room-code="roomCode" />
             <SettingOutlined class="info-icon" @click="showSettingsDrawer" />
           </div>
         </div>
@@ -178,8 +178,8 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref, onBeforeUnmount, onMounted } from 'vue';
-import { AudioMutedOutlined, AudioOutlined, PhoneOutlined, SettingOutlined, PlusCircleOutlined, CheckOutlined, UserOutlined, SearchOutlined, LoadingOutlined, PlusOutlined } from "@ant-design/icons-vue"
+import { ref, onBeforeUnmount, onMounted } from 'vue';
+import { AudioOutlined, PhoneOutlined, SettingOutlined, PlusCircleOutlined, CheckOutlined, UserOutlined, SearchOutlined, LoadingOutlined, PlusOutlined } from "@ant-design/icons-vue"
 import { createRoom, joinRoom, getUserDetailsInRoom } from '../api/wt/roomApi.ts';
 import { notification, DrawerProps, UploadChangeParam, message, UploadFile } from 'ant-design-vue';
 import { LOCAL_WEBSOCKET_SERVER_URL } from '../utils/ipAddress.ts';

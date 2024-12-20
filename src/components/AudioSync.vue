@@ -3,8 +3,8 @@
   <AudioOutlined v-show="isRecording === true" :class="$attrs.class" class="icon" @click="toggleRecording" />
   <!-- 显示已静音的图标 -->
   <AudioMutedOutlined v-show="isRecording === false" :class="$attrs.class" class="icon" @click="toggleRecording" />
-  <!-- 挂机图标 -->
-  <PhoneOutlined :class="$attrs.class" class="icon"/>
+  <!-- 是否播放声音 -->
+  <PhoneOutlined :class="$attrs.class" class="icon" />
 </template>
 
 <script setup lang="ts">
