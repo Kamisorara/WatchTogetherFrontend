@@ -48,7 +48,7 @@ const startStreaming = async () => {
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
 
-    await audioContext.audioWorklet.addModule('/audio-processor.js'); // Load the worklet
+    await audioContext.audioWorklet.addModule('/audio-processor.js');
 
     const source = audioContext.createMediaStreamSource(mediaStream);
     audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor', {
@@ -58,13 +58,31 @@ const startStreaming = async () => {
     audioWorkletNode.port.onmessage = (event) => {
       const audioData = event.data;
       if (audioData) {
-        const base64Audio = Buffer.from(new Uint8Array(audioData)).toString('base64');
+        let arrayBuffer: ArrayBuffer;
+        if (audioData instanceof ArrayBuffer) {
+          arrayBuffer = audioData;
+        } else if (audioData.data instanceof ArrayBuffer) {
+          arrayBuffer = audioData.data;
+        } else {
+          console.error("错误：audioData 不是 ArrayBuffer 类型，而是", audioData.constructor.name);
+          return;
+        }
+
+        const uint8Array = new Uint8Array(arrayBuffer);
+        console.log("Uint8Array (before encoding):", uint8Array.slice(0, 20)); // Log more bytes
+        console.log("Uint8Array length:", uint8Array.length);
+
+        const base64Audio = Buffer.from(uint8Array).toString('base64');
+        console.log("Base64 (sent):", base64Audio.substring(0, 200) + "..."); // Log more characters
+        console.log("Base64 length:", base64Audio.length);
+
         props.stompClient?.publish({
           destination: `/app/audio/${props.roomCode}`,
           body: JSON.stringify({ audioData: base64Audio, senderId: props.userId }),
         });
       }
     };
+
     source.connect(audioWorkletNode).connect(audioContext.destination);
     subscribeToAudioMessages();
   } catch (error) {
@@ -88,23 +106,33 @@ const stopStreaming = () => {
   }
 };
 
-const playAudio = async (audioData: string) => { // Expecting base64 string
+const playAudio = async (audioData: string) => {
   try {
     if (!audioContext) {
       audioContext = new AudioContext({ sampleRate: 16000 });
     }
 
-    const decodedAudio = Buffer.from(audioData, 'base64').buffer;
+    console.log("接收到的 Base64 字符串 (前 100 字符):", audioData.substring(0, 100) + "...");
+    console.log("Base64 字符串长度:", audioData.length);
 
-    const audioBuffer = await audioContext.decodeAudioData(decodedAudio);
+    try {
+      const decodedAudio = Buffer.from(audioData, 'base64');
+      console.log("Base64 解码后的 byte[] 长度:", decodedAudio.length);
+      const uint8Array = new Uint8Array(decodedAudio);
+      console.log("解码后的 Uint8Array 前 10 个字节：", uint8Array.slice(0, 10));
 
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioContext.destination);
-    source.start(0);
-
+      const audioBuffer = await audioContext.decodeAudioData(decodedAudio.buffer);
+      const source = audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+      console.log("音频播放成功！");
+    } catch (decodeError) {
+      console.error("Buffer.from 解码失败:", decodeError);
+      // 移除 atob 尝试，因为它并不能解决根本问题
+    }
   } catch (error) {
-    console.error("Error playing audio:", error);
+    console.error("播放音频时发生错误:", error);
   }
 };
 
@@ -115,6 +143,35 @@ const subscribeToAudioMessages = () => {
     playAudio(audioMessage.audioData); // Pass the base64 string directly
   });
 };
+
+
+const testBase64EncodingDecoding = async () => {
+  try {
+    // 1. Create a test ArrayBuffer (replace with actual audio data if available)
+    const testArrayBuffer = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).buffer; // Example data
+
+    // 2. Encode to Base64
+    const testBase64 = Buffer.from(new Uint8Array(testArrayBuffer)).toString('base64');
+    console.log("Test Base64 (sent):", testBase64);
+
+    // 3. Decode from Base64
+    const decodedTestBuffer = Buffer.from(testBase64, 'base64').buffer;
+    console.log("Test Base64 decoded successfully. Length:", decodedTestBuffer.byteLength);
+
+    // 4. Try to decode as audio (if you have a test audio context)
+    if (audioContext) {
+      const testAudioBuffer = await audioContext.decodeAudioData(decodedTestBuffer);
+      console.log("Test audio decoded successfully!");
+    }
+
+  } catch (error) {
+    console.error("Test failed:", error);
+  }
+};
+
+onMounted(() => {
+  testBase64EncodingDecoding(); // Call the test function
+});
 
 onUnmounted(() => {
   stopStreaming(); // Stop streaming on unmount
