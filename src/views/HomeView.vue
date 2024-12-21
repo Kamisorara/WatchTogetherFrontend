@@ -94,7 +94,7 @@
           <div class="user-info-icon">
             <!-- TODO 实现语音的开启和关闭 -->
             <!-- <AudioMutedOutlined class="info-icon" /> -->
-            <AudioSync class="info-icon" :stomp-client="(stompClient as Client)" :room-code="roomCode" />
+            <AudioSync class="info-icon" :user-id="userAccountDetailFromState.id" :stomp-client="(stompClient as Client)" :room-code="roomCode" />
             <SettingOutlined class="info-icon" @click="showSettingsDrawer" />
           </div>
         </div>
