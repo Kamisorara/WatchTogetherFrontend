@@ -1,6 +1,6 @@
 <template>
   <video class="chat-content-video" controls ref="videoRef" @play="handlePlay" @pause="handlePause"
-    src="D:\Data\code\web_2024\WatchTogether\FormalProject\WatchTogetherFrontend\public\mv.mp4" muted>
+    src="../assets/mv.mp4" muted>
     您的浏览器不支持视频播放。
   </video>
 </template>

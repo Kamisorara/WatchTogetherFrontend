@@ -3,7 +3,7 @@ import { REMOTE_SERVER_IP, LOCAL_SERVER_IP } from "./ipAddress";
 
 // 创建 Axios 实例
 const axiosInstance: AxiosInstance = axios.create({
-  baseURL: `http://${LOCAL_SERVER_IP}:8080`,
+  baseURL: `http://${LOCAL_SERVER_IP}:8081`,
   timeout: 5000,
 });
 
