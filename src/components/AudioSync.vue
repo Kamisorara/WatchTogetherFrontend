@@ -34,6 +34,45 @@ const remoteStreams = reactive<Record<string, MediaStream>>({});
 // 音频输出元素 (动态创建)
 const audioElements: Record<string, HTMLAudioElement> = {};
 
+const messageQueue: { type: string, data: any, fromUserId: string }[] = [];
+let isProcessingQueue = false;
+
+const addToMessageQueue = (type: string, data: any, fromUserId: string) => {
+  messageQueue.push({ type, data, fromUserId });
+  if (!isProcessingQueue) {
+    processMessageQueue();
+  }
+};
+
+const processMessageQueue = async () => {
+  if (messageQueue.length === 0) {
+    isProcessingQueue = false;
+    return;
+  }
+
+  isProcessingQueue = true;
+  const { type, data, fromUserId } = messageQueue.shift()!;
+
+  try {
+    switch (type) {
+      case 'offer':
+        await handleOffer(data, fromUserId);
+        break;
+      case 'answer':
+        await handleAnswer(data, fromUserId);
+        break;
+      case 'ice-candidate':
+        handleIceCandidate(data, fromUserId);
+        break;
+    }
+  } catch (e) {
+    console.error('处理信令消息出错:', e);
+  }
+
+  // 处理下一条消息
+  setTimeout(processMessageQueue, 10);
+};
+
 const toggleStreaming = async () => {
   console.log('切换通话状态，当前状态:', isStreaming.value);
   isStreaming.value = !isStreaming.value;
@@ -137,6 +176,24 @@ const createPeerConnection = (targetUserId: string, isInitiator = false) => {
     // 处理连接状态变化
     pc.onconnectionstatechange = () => {
       console.log(`与用户 ${targetUserId} 的连接状态: ${pc.connectionState}`);
+
+      if (pc.connectionState === 'connected') {
+        console.log(`与用户 ${targetUserId} 的连接已建立`);
+      } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+        console.warn(`与用户 ${targetUserId} 的连接出现问题，状态: ${pc.connectionState}`);
+
+        // 连接失败时自动尝试重连
+        if (isInitiator && pc.connectionState === 'failed') {
+          console.log(`尝试重新建立连接...`);
+          setTimeout(() => {
+            createAndSendOffer(targetUserId, pc);
+          }, 2000);
+        }
+      }
+    };
+
+    pc.onsignalingstatechange = () => {
+      console.log(`与用户 ${targetUserId} 的信令状态: ${pc.signalingState}`);
     };
 
     // 处理远程音频流
@@ -213,9 +270,28 @@ const handleAnswer = async (answer: RTCSessionDescriptionInit, fromUserId: strin
   const pc = peerConnections[fromUserId];
   if (pc) {
     try {
-      await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      // 检查连接状态是否正确
+      console.log(`处理answer前连接状态: signalingState=${pc.signalingState}, iceConnectionState=${pc.iceConnectionState}`);
+
+      // 只有在 have-local-offer 状态下才能设置远程 answer
+      if (pc.signalingState === 'have-local-offer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log(`成功设置来自用户 ${fromUserId} 的远程描述(answer)`);
+      } else if (pc.signalingState === 'stable') {
+        console.warn(`忽略来自用户 ${fromUserId} 的重复answer，连接已经处于稳定状态`);
+      } else {
+        console.warn(`无法处理来自用户 ${fromUserId} 的answer，因为连接处于 ${pc.signalingState} 状态`);
+      }
     } catch (error) {
       console.error(`处理 answer 失败:`, error);
+
+      // 尝试恢复连接 - 在连接出错时重新协商
+      if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
+        console.log(`尝试重新协商连接...`);
+        setTimeout(() => {
+          createAndSendOffer(fromUserId, pc);
+        }, 2000);
+      }
     }
   }
 };
@@ -369,18 +445,18 @@ const subscribeToSignalingMessages = () => {
         break;
 
       case 'offer':
-        // 收到 offer，创建 answer
-        handleOffer(signalData.sdp, signalData.senderId);
+        // 使用队列处理
+        addToMessageQueue('offer', signalData.sdp, signalData.senderId);
         break;
 
       case 'answer':
-        // 收到 answer
-        handleAnswer(signalData.sdp, signalData.senderId);
+        // 使用队列处理
+        addToMessageQueue('answer', signalData.sdp, signalData.senderId);
         break;
 
       case 'ice-candidate':
-        // 收到 ICE 候选
-        handleIceCandidate(signalData.candidate, signalData.senderId);
+        // 使用队列处理
+        addToMessageQueue('ice-candidate', signalData.candidate, signalData.senderId);
         break;
     }
   });
