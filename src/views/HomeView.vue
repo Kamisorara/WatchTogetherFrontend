@@ -15,7 +15,8 @@
             <div style="margin-bottom: 20px; text-align: center; color: var(--neutral);">
               创建一个新的观影派对，邀请朋友一起享受！
             </div>
-            <a-button type="primary" block size="large" @click="onCreateRoom" style="height: 48px; font-size: 16px;">
+            <a-button type="primary" block size="large" @click="onCreateRoom"
+              style="height: 48px; font-size: 16px; color: black;">
               <template #icon>
                 <PlusCircleOutlined />
               </template>
@@ -60,7 +61,7 @@
     <!-- 用户列表 -->
     <div class="channel">
       <div
-        style="padding: 20px 16px 0; font-size: 14px; color: rgba(255,255,255,0.6); display: flex; justify-content: space-between; align-items: center;">
+        style="padding: 20px 16px 0; font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
         <span>观影派对成员</span>
         <span>{{ otherUserList.length }}人在线</span>
       </div>
@@ -678,14 +679,14 @@ const onJoinRoom = async () => {
   font-size: 15px;
   font-weight: 600;
   /* Increased from 500 */
-  color: rgba(255, 255, 255, 1);
+  color: rgb(132, 130, 130);
   /* Full opacity for better visibility */
   margin-left: 14px;
   flex-grow: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.3);
+  text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
   /* Add text shadow for better readability */
 }
 
@@ -697,7 +698,7 @@ const onJoinRoom = async () => {
 
 .other-user-info-icon .other-info-icon {
   margin-left: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(125, 125, 125, 0.6);
   font-size: 18px;
   transition: all 0.3s;
   padding: 6px;
