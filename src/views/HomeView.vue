@@ -4,59 +4,47 @@
     <div class="sidebar">
       <div class="logo">WT</div>
       <!-- 创建房间 -->
-      <div v-if="!isInRoom" class="icon" @mouseenter="createRoomHandleHoverChange(true)"
-        @mouseleave="createRoomHandleHoverChange(false)">
-        <a-tooltip placement="right" :title="createRoomHovered ? '' : '点击创建房间'">
-          <a-dropdown :trigger="['click']" placement="bottomRight" :open="createRoomClicked"
-            @openChange="createRoomHandleClickChange">
-            <div>
-              <PlusCircleOutlined :spin="false" style="font-size: 24px;" />
-            </div>
-            <template #overlay>
-              <a-menu style="width: 160px; padding: 8px;">
-                <div style="padding: 12px;">
-                  <a-button type="primary" block size="middle" @click="onCreateRoom">
-                    创建房间
-                  </a-button>
-                  <div style="margin-top: 12px; text-align: right;">
-                    <a @click="createRoomHide">关闭</a>
-                  </div>
-                </div>
-              </a-menu>
-            </template>
-          </a-dropdown>
+      <div v-if="!isInRoom" class="icon" @click="toggleCreateRoomDropdown">
+        <a-tooltip placement="right" :title="'创建房间'">
+          <div>
+            <PlusCircleOutlined :spin="false" style="font-size: 24px;" />
+          </div>
         </a-tooltip>
+        <a-modal v-model:visible="createRoomClicked" :footer="null" :width="300" title="创建房间" centered destroyOnClose>
+          <div style="padding: 12px;">
+            <a-button type="primary" block size="middle" @click="onCreateRoom">
+              创建房间
+            </a-button>
+            <div style="margin-top: 12px; text-align: right;">
+              <a @click="createRoomHide">关闭</a>
+            </div>
+          </div>
+        </a-modal>
       </div>
 
-      <!-- 加入房间 button with similar updated styling -->
-      <div v-if="!isInRoom" class="icon" @mouseenter="joinRoomHandleHoverChange(true)"
-        @mouseleave="joinRoomHandleHoverChange(false)">
-        <a-tooltip placement="right" :title="joinRoomHovered ? '' : '点击加入房间'">
-          <a-dropdown :trigger="['click']" placement="bottomRight" :open="joinRoomClicked"
-            @openChange="joinRoomHandleClickChange">
-            <div>
-              <SearchOutlined :spin="false" style="font-size: 24px;" />
-            </div>
-            <template #overlay>
-              <a-menu style="width: 240px; padding: 8px;">
-                <div style="padding: 12px;">
-                  <div style="margin-bottom: 12px; font-weight: 600;">加入房间</div>
-                  <div style="display: flex; gap: 8px;">
-                    <a-input v-model:value="roomCodeInput" placeholder="请输入房间号" />
-                    <a-button type="primary" @click="onJoinRoom">
-                      <template #icon>
-                        <CheckOutlined />
-                      </template>
-                    </a-button>
-                  </div>
-                  <div style="margin-top: 12px; text-align: right;">
-                    <a @click="joinRoomHide">关闭</a>
-                  </div>
-                </div>
-              </a-menu>
-            </template>
-          </a-dropdown>
+      <!-- 加入房间 -->
+      <div v-if="!isInRoom" class="icon" @click="toggleJoinRoomDropdown">
+        <a-tooltip placement="right" :title="'加入房间'">
+          <div>
+            <SearchOutlined :spin="false" style="font-size: 24px;" />
+          </div>
         </a-tooltip>
+        <a-modal v-model:visible="joinRoomClicked" :footer="null" :width="350" title="加入房间" centered destroyOnClose>
+          <div style="padding: 12px;">
+            <div style="margin-bottom: 12px; font-weight: 600;">加入房间</div>
+            <div style="display: flex; gap: 8px;">
+              <a-input v-model:value="roomCodeInput" placeholder="请输入房间号" />
+              <a-button type="primary" @click="onJoinRoom">
+                <template #icon>
+                  <CheckOutlined />
+                </template>
+              </a-button>
+            </div>
+            <div style="margin-top: 12px; text-align: right;">
+              <a @click="joinRoomHide">关闭</a>
+            </div>
+          </div>
+        </a-modal>
       </div>
     </div>
 
@@ -300,36 +288,23 @@ const roomCode = ref<string>('');
 
 const createRoomHide = () => {
   createRoomClicked.value = false;
-  createRoomHovered.value = false;
 };
 
-const createRoomHandleHoverChange = (visible: boolean) => {
-  createRoomClicked.value = false;
-  createRoomHovered.value = visible;
+const joinRoomHide = () => {
+  joinRoomClicked.value = false;
 };
-
-const createRoomHandleClickChange = (visible: boolean) => {
-  createRoomClicked.value = visible;
-  createRoomHovered.value = false;
-};
-
 
 const joinRoomClicked = ref<boolean>(false);
 const joinRoomHovered = ref<boolean>(false);
 
-const joinRoomHide = () => {
-  joinRoomClicked.value = false;
-  joinRoomHovered.value = false;
+const toggleCreateRoomDropdown = () => {
+  createRoomClicked.value = !createRoomClicked.value;
+  joinRoomClicked.value = false; // 关闭另一个弹窗
 };
 
-const joinRoomHandleHoverChange = (visible: boolean) => {
-  joinRoomClicked.value = false;
-  joinRoomHovered.value = visible;
-};
-
-const joinRoomHandleClickChange = (visible: boolean) => {
-  joinRoomClicked.value = visible;
-  joinRoomHovered.value = false;
+const toggleJoinRoomDropdown = () => {
+  joinRoomClicked.value = !joinRoomClicked.value;
+  createRoomClicked.value = false; // 关闭另一个弹窗
 };
 
 const showCreateRoomSuccessNotification = () => {
@@ -470,6 +445,7 @@ const onCreateRoom = async () => {
       isInRoom.value = true;
       connectToWebSocketServer(roomCode.value);
       showCreateRoomSuccessNotification();
+      createRoomClicked.value = false; // 关闭弹窗
     } else {
       showCreateRoomFailNotification();
     }
@@ -490,6 +466,7 @@ const onJoinRoom = async () => {
       showJoinRoomSuccessNotification();
       // 获取房间内用户
       getOhterUserDetailsInRoom(roomCodeInput.value);
+      joinRoomClicked.value = false; // 关闭弹窗
     } else {
       showJoinRoomFailNotification();
     }
