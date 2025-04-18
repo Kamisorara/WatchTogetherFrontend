@@ -10,13 +10,19 @@
             <PlusCircleOutlined :spin="false" style="font-size: 24px;" />
           </div>
         </a-tooltip>
-        <a-modal v-model:visible="createRoomClicked" :footer="null" :width="300" title="创建房间" centered destroyOnClose>
-          <div style="padding: 12px;">
-            <a-button type="primary" block size="middle" @click="onCreateRoom">
+        <a-modal v-model:visible="createRoomClicked" :footer="null" :width="320" title="创建新房间" centered destroyOnClose>
+          <div style="padding: 16px;">
+            <div style="margin-bottom: 20px; text-align: center; color: var(--neutral);">
+              创建一个新的观影派对，邀请朋友一起享受！
+            </div>
+            <a-button type="primary" block size="large" @click="onCreateRoom" style="height: 48px; font-size: 16px;">
+              <template #icon>
+                <PlusCircleOutlined />
+              </template>
               创建房间
             </a-button>
-            <div style="margin-top: 12px; text-align: right;">
-              <a @click="createRoomHide">关闭</a>
+            <div style="margin-top: 16px; text-align: right;">
+              <a @click="createRoomHide" style="color: var(--neutral); opacity: 0.8;">取消</a>
             </div>
           </div>
         </a-modal>
@@ -29,19 +35,22 @@
             <SearchOutlined :spin="false" style="font-size: 24px;" />
           </div>
         </a-tooltip>
-        <a-modal v-model:visible="joinRoomClicked" :footer="null" :width="350" title="加入房间" centered destroyOnClose>
-          <div style="padding: 12px;">
-            <div style="margin-bottom: 12px; font-weight: 600;">加入房间</div>
-            <div style="display: flex; gap: 8px;">
-              <a-input v-model:value="roomCodeInput" placeholder="请输入房间号" />
-              <a-button type="primary" @click="onJoinRoom">
+        <a-modal v-model:visible="joinRoomClicked" :footer="null" :width="380" title="加入观影派对" centered destroyOnClose>
+          <div style="padding: 16px;">
+            <div style="margin-bottom: 20px; font-weight: 500; color: var(--neutral); text-align: center;">
+              输入房间号加入朋友的观影派对
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <a-input v-model:value="roomCodeInput" placeholder="请输入房间号" size="large" style="flex: 1;" />
+              <a-button style="color: black;" type="primary" size="large" @click="onJoinRoom">
                 <template #icon>
                   <CheckOutlined />
                 </template>
+                加入
               </a-button>
             </div>
-            <div style="margin-top: 12px; text-align: right;">
-              <a @click="joinRoomHide">关闭</a>
+            <div style="margin-top: 16px; text-align: right;">
+              <a @click="joinRoomHide" style="color: var(--neutral); opacity: 0.8;">取消</a>
             </div>
           </div>
         </a-modal>
@@ -50,10 +59,15 @@
 
     <!-- 用户列表 -->
     <div class="channel">
+      <div
+        style="padding: 20px 16px 0; font-size: 14px; color: rgba(255,255,255,0.6); display: flex; justify-content: space-between; align-items: center;">
+        <span>观影派对成员</span>
+        <span>{{ otherUserList.length }}人在线</span>
+      </div>
       <div class="channel-list">
         <div v-for="otherUser, index in otherUserList" class="channel-item" :key="index">
           <div class="other-user-info">
-            <a-avatar :size="32" :src="otherUser.userAvatar">
+            <a-avatar :size="38" :src="otherUser.userAvatar">
               <template #icon>
                 <UserOutlined />
               </template>
@@ -69,7 +83,7 @@
       <!-- 个人 -->
       <div class="current-user">
         <div class="user-info">
-          <a-avatar :size="32" :src="person.userAvatar">
+          <a-avatar :size="38" :src="person.userAvatar">
             <template #icon>
               <UserOutlined />
             </template>
@@ -88,16 +102,30 @@
 
     <!-- Main Chat Section -->
     <div class="main-chat">
+
+      <!-- 聊天头部 -->
       <div class="chat-header">
         <div v-show="!isInRoom" class="title">尚未加入房间</div>
-        <div v-show="isInRoom" class="title">当前房间: {{ roomCode }}</div>
+        <div v-show="isInRoom" class="title">观影派对: {{ roomCode }}</div>
       </div>
 
       <!-- 视频部分 -->
       <div class="chat-content">
         <div v-if="!stompClient" class="chat-content-video-none">
-          <disconnect-outlined style="font-size: 64px; color: #d9d9d9;" />
-          <span>WebSocket未连接，请先创建或加入房间</span>
+          <div class="empty-icon-container">
+            <disconnect-outlined />
+          </div>
+          <div class="empty-text">WebSocket未连接，请先创建或加入房间开始您的观影派对</div>
+          <div class="action-buttons">
+            <div class="action-button action-button-primary" @click="toggleCreateRoomDropdown" v-if="!isInRoom">
+              <plus-circle-outlined />
+              <span>创建房间</span>
+            </div>
+            <div class="action-button action-button-secondary" @click="toggleJoinRoomDropdown" v-if="!isInRoom">
+              <search-outlined />
+              <span>加入房间</span>
+            </div>
+          </div>
         </div>
         <!-- 不用管这个error -->
         <VideoPlayer v-if="stompClient" class="chat-content-video" :stompClient="(stompClient as Client)"
@@ -106,34 +134,38 @@
     </div>
     <!-- 设置下拉栏 -->
   </div>
-  <a-drawer class="settings-drawer" :width="500" title="设置" :placement="placement" :open="settingsDrawerOpen"
+  <a-drawer class="settings-drawer" :width="500" title="个人设置" :placement="placement" :open="settingsDrawerOpen"
     @close="closeSettingsDrawer">
     <template #extra>
+      <div style="display: flex; gap: 10px;">
+        <a-button style="color: black;" type="primary" @click="closeSettingsDrawer">
+          完成
+        </a-button>
+      </div>
     </template>
     <a-card class="settings-drawer-account" :loading="accountMessageLoading" hoverable title="账号信息">
       <!-- 头像 -->
-      <div style="display: flex;justify-content: center; align-items: center;">
+      <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 30px;">
         <a-upload style="cursor: pointer;" v-model:file-list="avatarFileList" name="file" :show-upload-list="false"
           action="http://localhost:8080/api/sys/fastdfs-upload" :before-upload="beforeUpload" :headers="uploadHeaders"
           @change="handleUploadChange">
-          <a-avatar v-if="userAccountDetailFromState.userAvatar !== ''" :size="64"
+          <a-avatar v-if="userAccountDetailFromState.userAvatar !== ''" :size="80"
             :src="userAccountDetailFromState.userAvatar">
             <template #icon>
               <UserOutlined />
             </template>
           </a-avatar>
-          <div v-else>
-            <loading-outlined v-if="avatarUploading"></loading-outlined>
-            <plus-outlined v-else></plus-outlined>
-            <div class="ant-upload-text">Upload</div>
+          <div v-else
+            style="width: 80px; height: 80px; border-radius: 50%; background: #f5f5f5; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+            <loading-outlined v-if="avatarUploading" style="font-size: 24px;"></loading-outlined>
+            <plus-outlined v-else style="font-size: 24px;"></plus-outlined>
+            <div class="ant-upload-text" style="margin-top: 8px; font-size: 12px;">上传头像</div>
           </div>
         </a-upload>
       </div>
-      <div>
-      </div>
       <a-form style="margin-top: 20px;" v-bind="userAccountDetailFromLayout" :model="userAccountDetailFromState"
         name="userDetailMessage" @finish="onUserAccountFromFinish" @submit="onUpdateUserDetailSubmit">
-        <a-form-item name="id" label="id">
+        <a-form-item name="id" label="ID">
           <a-input disabled v-model:value="userAccountDetailFromState.id" />
         </a-form-item>
         <a-form-item name="username" label="用户名">
@@ -153,11 +185,10 @@
           </a-radio-group>
         </a-form-item>
         <a-form-item :wrapper-col="{ span: 12, offset: 15 }">
-          <a-button type="primary" html-type="submit">提交修改</a-button>
+          <a-button style="color: black;" type="primary" html-type="submit">提交修改</a-button>
         </a-form-item>
       </a-form>
     </a-card>
-    <a-card class="settings-drawer-details" :loading="detailsMessageLoading" hoverable title="修改密码">...</a-card>
   </a-drawer>
 </template>
 
@@ -480,105 +511,161 @@ const onJoinRoom = async () => {
 </script>
 
 <style scoped>
+/* 基础变量 */
+:root {
+  --primary: #7c4dff;
+  --primary-light: #b47cff;
+  --primary-dark: #3f1dcb;
+  --secondary: #00c853;
+  --secondary-light: #5efc82;
+  --secondary-dark: #009624;
+  --neutral-dark: #263238;
+  --neutral: #455a64;
+  --neutral-light: #718792;
+  --background-light: #f5f7fa;
+  --background-dark: #121212;
+  --white: #ffffff;
+  --error: #ff5252;
+  --warning: #ffab40;
+  --info: #40c4ff;
+  --success: #69f0ae;
+}
+
 .discord-container {
   display: flex;
   flex-direction: row;
   height: 100vh;
-  background-color: #f9fafb;
+  background-color: var(--background-light);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  overflow: hidden;
 }
 
+/* 侧边栏样式 */
 .sidebar {
-  min-width: 72px;
-  background-color: #ffffff;
+  min-width: 80px;
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
   padding: 24px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
   z-index: 10;
 }
 
 .sidebar .logo {
   font-size: 24px;
   font-weight: bold;
-  margin-bottom: 32px;
-  color: #1890ff;
-  width: 48px;
-  height: 48px;
+  margin-bottom: 36px;
+  color: var(--white);
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #e6f7ff;
-  border-radius: 12px;
-  transition: all 0.3s;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  letter-spacing: -1px;
 }
 
 .sidebar .logo:hover {
-  transform: scale(1.05);
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
 }
 
 .sidebar .icon {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   margin-bottom: 24px;
-  background-color: #f0f5ff;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  /* Increased opacity for better contrast */
+  border-radius: 16px;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #1890ff;
+  color: var(--white);
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar .icon::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 16px;
 }
 
 .sidebar .icon:hover {
-  background-color: #e6f7ff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
+.sidebar .icon:hover::before {
+  opacity: 1;
+}
+
+/* 频道列表样式 */
 .channel {
-  min-width: 260px;
-  background-color: #ffffff;
+  min-width: 280px;
+  background-color: var(--neutral-dark);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   z-index: 5;
+  color: var(--white);
 }
 
 .channel-list {
-  color: #333;
   overflow-y: auto;
-  padding: 16px 12px;
+  padding: 20px 16px;
   flex: 1;
 }
 
 .channel-list::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
 }
 
 .channel-list::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
 }
 
 .channel-list::-webkit-scrollbar-thumb {
-  background: #e0e0e0;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.channel-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .channel-item {
-  padding: 12px 16px;
+  padding: 16px;
   border-radius: 12px;
-  margin-bottom: 8px;
-  background-color: #f5f5f5;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  /* Increased from 0.08 */
   transition: all 0.3s;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  /* Add subtle border */
 }
 
 .channel-list .channel-item:hover {
-  background-color: #e6f7ff;
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.2);
+  /* Increased from 0.12 */
+  transform: translateX(5px);
 }
 
 .other-user-info {
@@ -588,35 +675,49 @@ const onJoinRoom = async () => {
 }
 
 .other-user-info-username {
-  font-size: 14px;
-  font-weight: 500;
-  color: #262626;
-  margin-left: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  /* Increased from 500 */
+  color: rgba(255, 255, 255, 1);
+  /* Full opacity for better visibility */
+  margin-left: 14px;
   flex-grow: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.3);
+  /* Add text shadow for better readability */
 }
 
 .other-user-info-icon {
   margin-left: auto;
+  display: flex;
+  align-items: center;
 }
 
 .other-user-info-icon .other-info-icon {
-  margin-left: 10px;
-  color: #8c8c8c;
-  font-size: 16px;
-  transition: color 0.3s;
+  margin-left: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  transition: all 0.3s;
+  padding: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0);
 }
 
 .other-user-info-icon .other-info-icon:hover {
-  color: #1890ff;
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.15);
 }
 
+/* 当前用户区域样式 */
 .current-user {
-  background-color: #fafafa;
-  padding: 16px;
-  border-top: 1px solid #f0f0f0;
+  background: rgba(0, 0, 0, 0.25);
+  /* Increased from 0.2 */
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  /* Slightly more visible */
 }
 
 .current-user .user-info {
@@ -625,14 +726,18 @@ const onJoinRoom = async () => {
 }
 
 .user-info-username {
-  font-size: 14px;
-  font-weight: 500;
-  color: #262626;
-  margin-left: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  /* Increased from 600 */
+  color: rgba(255, 255, 255, 1);
+  /* Full opacity */
+  margin-left: 14px;
   flex-grow: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.3);
+  /* Text shadow for contrast */
 }
 
 .user-info-icon {
@@ -643,49 +748,72 @@ const onJoinRoom = async () => {
 .user-info-icon .info-icon {
   cursor: pointer;
   margin-left: 16px;
-  font-size: 18px;
-  color: #595959;
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.7);
   transition: all 0.3s;
+  padding: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0);
 }
 
 .user-info-icon .info-icon:hover {
-  color: #1890ff;
-  transform: scale(1.1);
+  color: var(--white);
+  transform: scale(1.15);
+  background: rgba(255, 255, 255, 0.1);
 }
 
+/* 主聊天区域样式 */
 .main-chat {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  background-color: #f9fafb;
+  background-color: var(--background-light);
+  position: relative;
 }
 
 .chat-header {
   display: flex;
   justify-content: center;
-  padding: 16px;
-  margin: 16px 16px 0;
-  border-radius: 12px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 16px 24px;
+  margin: 20px 20px 0;
+  border-radius: 16px;
+  background: linear-gradient(120deg, var(--white) 0%, rgba(255, 255, 255, 0.9) 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  z-index: 1;
 }
 
 .chat-header .title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #262626;
+  font-size: 18px;
+  font-weight: 700;
+  /* Increased from 600 */
+  color: var(--neutral-dark);
+  position: relative;
+  padding-bottom: 4px;
+}
+
+.chat-header .title::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: 3px;
 }
 
 .chat-content {
   flex-grow: 1;
-  margin: 16px;
-  border-radius: 12px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin: 20px;
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  position: relative;
 }
 
 .chat-content-video {
@@ -695,67 +823,213 @@ const onJoinRoom = async () => {
 }
 
 .chat-content-video-none {
-  color: #8c8c8c;
-  font-size: 16px;
+  color: var(--neutral);
+  font-size: 17px;
   font-weight: 500;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  justify-content: center;
+  gap: 24px;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(120deg, rgba(124, 77, 255, 0.02) 0%, rgba(124, 77, 255, 0.08) 100%);
+  padding: 60px 20px;
 }
 
-.chat-content-video-none:before {
-  content: "";
-  width: 64px;
-  height: 64px;
-  background-color: #f0f0f0;
+.empty-icon-container {
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.1) 0%, rgba(124, 77, 255, 0.05) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 10px 30px rgba(124, 77, 255, 0.2);
+  margin-bottom: 16px;
 }
 
+.empty-icon-container .anticon {
+  font-size: 48px;
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+.empty-text {
+  max-width: 280px;
+  text-align: center;
+  color: var(--neutral-dark);
+  /* Darker than previous */
+  line-height: 1.6;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+/* 设置抽屉样式 */
 .settings-drawer-account,
 .settings-drawer-details {
-  border-radius: 12px;
+  border-radius: 16px;
   transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  margin-bottom: 30px;
   overflow: hidden;
+  border: none;
 }
 
 .settings-drawer-account:hover,
 .settings-drawer-details:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
 }
 
-/* Ant Design overrides and custom classes */
+/* Ant Design 组件覆盖样式 */
 :deep(.ant-upload) {
   border-radius: 50%;
   overflow: hidden;
   transition: all 0.3s;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
 :deep(.ant-upload:hover) {
   transform: scale(1.05);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
 }
 
 :deep(.ant-avatar) {
-  border: 2px solid #f0f0f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 :deep(.ant-btn) {
-  border-radius: 8px;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  font-weight: 600;
+  /* Bolder text */
+  letter-spacing: 0.2px;
+}
+
+:deep(.ant-btn:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+:deep(.ant-btn-primary) {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border: none;
+  color: white;
+  /* Ensure text is white */
+  text-shadow: 0px 1px 1px rgba(0, 0, 0, 0.2);
+  /* Add text shadow */
+}
+
+:deep(.ant-btn-primary:hover) {
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+  color: white;
+  /* Maintain white text on hover */
 }
 
 :deep(.ant-input) {
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s;
+}
+
+:deep(.ant-input:hover),
+:deep(.ant-input:focus) {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(124, 77, 255, 0.1);
+}
+
+:deep(.ant-modal) {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+:deep(.ant-modal-content) {
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+:deep(.ant-modal-header) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 :deep(.ant-drawer-content) {
-  border-radius: 16px 0 0 16px;
+  border-radius: 24px 0 0 24px;
   overflow: hidden;
+}
+
+:deep(.ant-drawer-header) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:deep(.ant-card) {
+  border-radius: 16px;
+  border: none;
+}
+
+:deep(.ant-card-head) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:deep(.ant-modal-title),
+:deep(.ant-drawer-title),
+:deep(.ant-card-head-title) {
+  font-weight: 700;
+  color: var(--neutral-dark);
+}
+
+/* 房间按钮样式 */
+.action-buttons {
+  display: flex;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.action-button {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  /* Increased from 600 */
+  font-size: 15px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.3px;
+  /* Better letter spacing for readability */
+}
+
+.action-button-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  box-shadow: 0 8px 20px rgba(124, 77, 255, 0.3);
+  text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
+  /* Text shadow for better contrast */
+}
+
+.action-button-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 25px rgba(124, 77, 255, 0.4);
+}
+
+.action-button-secondary {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.9) 100%);
+  /* Increased opacity */
+  color: var(--neutral-dark);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  /* Darker border */
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
+  font-weight: 700;
+}
+
+.action-button-secondary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
 }
 </style>
