@@ -3,13 +3,16 @@
   <AudioOutlined v-show="isStreaming === true" :class="$attrs.class" class="icon" @click="toggleStreaming" />
   <!-- 显示已静音的图标 -->
   <AudioMutedOutlined v-show="isStreaming === false" :class="$attrs.class" class="icon" @click="toggleStreaming" />
-  <!-- 是否播放声音 -->
-  <PhoneOutlined :class="$attrs.class" class="icon" />
+  <!-- 是否接收音频 - 使用替代图标 -->
+  <SoundOutlined v-show="isReceivingAudio" :class="$attrs.class" class="icon" @click="toggleReceivingAudio" />
+  <CloseCircleOutlined v-show="!isReceivingAudio" :class="$attrs.class" class="icon" @click="toggleReceivingAudio" />
+  <!-- 是否播放声音
+  <PhoneOutlined :class="$attrs.class" class="icon" /> -->
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, reactive } from 'vue';
-import { AudioOutlined, AudioMutedOutlined, PhoneOutlined } from '@ant-design/icons-vue';
+import { AudioOutlined, AudioMutedOutlined, PhoneOutlined, SoundOutlined, CloseCircleOutlined } from '@ant-design/icons-vue';
 import type { Client, IMessage } from '@stomp/stompjs';
 
 interface AudioPlayerProps {
@@ -21,6 +24,7 @@ interface AudioPlayerProps {
 const props = defineProps<AudioPlayerProps>();
 
 const isStreaming = ref(false);
+const isReceivingAudio = ref(true);
 let localStream: MediaStream | null = null;
 
 // WebRTC 连接管理
@@ -37,6 +41,17 @@ const toggleStreaming = async () => {
   } else {
     stopStreaming();
   }
+};
+
+const toggleReceivingAudio = () => {
+  isReceivingAudio.value = !isReceivingAudio.value;
+
+  // 更新所有现有音频元素的静音状态
+  Object.keys(audioElements).forEach(userId => {
+    if (audioElements[userId]) {
+      audioElements[userId].muted = !isReceivingAudio.value;
+    }
+  });
 };
 
 const startStreaming = async () => {
@@ -234,12 +249,47 @@ const createAudioElement = (userId: string, stream: MediaStream) => {
   audioEl.srcObject = stream;
   audioEl.id = `remote-audio-${userId}`;
 
-  // 添加到文档中但不可见
-  audioEl.style.display = 'none';
-  document.body.appendChild(audioEl);
+  // 根据接收状态设置静音
+  audioEl.muted = !isReceivingAudio.value;
 
-  // 保存引用
+  // 调试模式：临时添加可见的音频控件
+  audioEl.controls = true;
+  audioEl.style.position = 'fixed';
+  audioEl.style.bottom = '50px';
+  audioEl.style.right = '20px';
+  audioEl.style.zIndex = '999';
+  audioEl.style.width = '300px';
+
+  document.body.appendChild(audioEl);
   audioElements[userId] = audioEl;
+
+  console.log(`为用户 ${userId} 创建了音频元素，静音状态:`, !isReceivingAudio.value);
+
+  // 尝试播放
+  audioEl.play().catch(e => {
+    console.error('自动播放失败，可能需要用户交互:', e);
+    // 添加一个视觉提示，让用户点击页面来允许音频播放
+    const notification = document.createElement('div');
+    notification.textContent = '点击页面启用音频';
+    notification.style.position = 'fixed';
+    notification.style.top = '10px';
+    notification.style.left = '50%';
+    notification.style.transform = 'translateX(-50%)';
+    notification.style.padding = '10px';
+    notification.style.backgroundColor = '#ffcc00';
+    notification.style.borderRadius = '4px';
+    notification.style.zIndex = '10000';
+    document.body.appendChild(notification);
+
+    // 点击页面后尝试播放
+    const clickHandler = () => {
+      audioEl.play().then(() => {
+        document.body.removeChild(notification);
+        document.removeEventListener('click', clickHandler);
+      }).catch(err => console.error('播放失败:', err));
+    };
+    document.addEventListener('click', clickHandler);
+  });
 };
 
 // 移除音频元素
