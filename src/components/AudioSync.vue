@@ -35,10 +35,15 @@ const remoteStreams = reactive<Record<string, MediaStream>>({});
 const audioElements: Record<string, HTMLAudioElement> = {};
 
 const toggleStreaming = async () => {
+  console.log('切换通话状态，当前状态:', isStreaming.value);
   isStreaming.value = !isStreaming.value;
+  console.log('切换后状态:', isStreaming.value);
+
   if (isStreaming.value) {
+    console.log('开始请求麦克风权限...');
     await startStreaming();
   } else {
+    console.log('停止语音通话...');
     stopStreaming();
   }
 };
@@ -56,7 +61,8 @@ const toggleReceivingAudio = () => {
 
 const startStreaming = async () => {
   try {
-    // 获取用户麦克风权限，启用回音消除和噪音抑制
+    console.log('开始获取用户麦克风...');
+    // 获取用户麦克风权限
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
@@ -65,6 +71,11 @@ const startStreaming = async () => {
       },
       video: false
     });
+
+    console.log('麦克风获取成功:', localStream.getTracks().length, '个轨道');
+
+    // 检查WebSocket客户端状态
+    console.log('WebSocket客户端状态:', props.stompClient?.connected ? '已连接' : '未连接');
 
     // 订阅信令消息
     subscribeToSignalingMessages();
@@ -312,13 +323,14 @@ const broadcastJoinRoom = () => {
 // 广播离开房间消息
 const broadcastLeaveRoom = () => {
   sendSignalingMessage({
-    type: 'leave-room',
+    type: 'leave-room', // 添加这个类型字段
     userId: props.userId
   });
 };
 
 // 发送信令消息
 const sendSignalingMessage = (message: any) => {
+  console.log('准备发送信令消息:', message);
   if (props.stompClient?.connected) {
     props.stompClient.publish({
       destination: `/app/rtc-signaling/${props.roomCode}`,
@@ -327,6 +339,9 @@ const sendSignalingMessage = (message: any) => {
         senderId: props.userId
       })
     });
+  } else {
+    console.error('WebSocket未连接，无法发送消息');
+    // 可以考虑在这里添加重连逻辑或通知用户
   }
 };
 
