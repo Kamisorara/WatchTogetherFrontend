@@ -4,63 +4,59 @@
     <div class="sidebar">
       <div class="logo">WT</div>
       <!-- 创建房间 -->
-      <div v-if="!isInRoom" class="icon">
-        <a-popover style="width: 500px" title="" trigger="hover" :open="createRoomHovered"
-          @openChange="createRoomHandleHoverChange" placement="rightTop">
-          <template #content>
-            <div>点击创建房间</div>
-          </template>
-          <a-popover title="" trigger="click" :open="createRoomClicked" @openChange="createRoomHandleClickChange"
-            placement="rightTop">
-            <template #content>
-              <div style="width: 100px; height: 70px; display: flex; flex-direction: column;">
-                <a-button type="primary" size="large" @click="onCreateRoom">
-                  创建房间
-                </a-button>
-                <a @click="createRoomHide" style="margin-top: auto; display: flex;">
-                  <div style="margin-left: auto;">
-                    关闭
-                  </div>
-                </a>
-              </div>
-            </template>
-            <!-- 使用 button 作为触发器 -->
-            <!-- <a-button></a-button> -->
-            <PlusCircleOutlined :spin="false" style="font-size: 30px;" />
-          </a-popover>
-        </a-popover>
-      </div>
-      <!-- 添加房间 -->
-      <div v-if="!isInRoom" class="icon">
-        <a-popover style="width: 500px" title="" trigger="hover" :open="joinRoomHovered"
-          @openChange="joinRoomHandleHoverChange" placement="rightTop">
-          <template #content>
-            <div>点击加入房间</div>
-          </template>
-          <a-popover title="加入房间" trigger="click" :open="joinRoomClicked" @openChange="joinRoomHandleClickChange"
-            placement="rightTop">
-            <template #content>
-              <div style="width: 180px; height: 70px;display: flex; flex-direction: column; ">
-                <div style="display: flex; justify-content: center; align-items: center;">
-                  <a-input style="min-width: 130px;" v-model:value="roomCodeInput" placeholder="请输入房间号" />
-                  <a-button style="margin-left: 5px;" type="primary" size="middle" @click="onJoinRoom">
-                    <template #icon>
-                      <CheckOutlined />
-                    </template>
+      <div v-if="!isInRoom" class="icon" @mouseenter="createRoomHandleHoverChange(true)"
+        @mouseleave="createRoomHandleHoverChange(false)">
+        <a-tooltip placement="right" :title="createRoomHovered ? '' : '点击创建房间'">
+          <a-dropdown :trigger="['click']" placement="bottomRight" :open="createRoomClicked"
+            @openChange="createRoomHandleClickChange">
+            <div>
+              <PlusCircleOutlined :spin="false" style="font-size: 24px;" />
+            </div>
+            <template #overlay>
+              <a-menu style="width: 160px; padding: 8px;">
+                <div style="padding: 12px;">
+                  <a-button type="primary" block size="middle" @click="onCreateRoom">
+                    创建房间
                   </a-button>
-                </div>
-                <a @click="joinRoomHide" style="margin-top: auto; display: flex;">
-                  <div style="margin-left: auto;">
-                    关闭
+                  <div style="margin-top: 12px; text-align: right;">
+                    <a @click="createRoomHide">关闭</a>
                   </div>
-                </a>
-              </div>
+                </div>
+              </a-menu>
             </template>
-            <!-- 使用 button 作为触发器 -->
-            <!-- <a-button></a-button> -->
-            <SearchOutlined :spin="false" style="font-size: 30px;" />
-          </a-popover>
-        </a-popover>
+          </a-dropdown>
+        </a-tooltip>
+      </div>
+
+      <!-- 加入房间 button with similar updated styling -->
+      <div v-if="!isInRoom" class="icon" @mouseenter="joinRoomHandleHoverChange(true)"
+        @mouseleave="joinRoomHandleHoverChange(false)">
+        <a-tooltip placement="right" :title="joinRoomHovered ? '' : '点击加入房间'">
+          <a-dropdown :trigger="['click']" placement="bottomRight" :open="joinRoomClicked"
+            @openChange="joinRoomHandleClickChange">
+            <div>
+              <SearchOutlined :spin="false" style="font-size: 24px;" />
+            </div>
+            <template #overlay>
+              <a-menu style="width: 240px; padding: 8px;">
+                <div style="padding: 12px;">
+                  <div style="margin-bottom: 12px; font-weight: 600;">加入房间</div>
+                  <div style="display: flex; gap: 8px;">
+                    <a-input v-model:value="roomCodeInput" placeholder="请输入房间号" />
+                    <a-button type="primary" @click="onJoinRoom">
+                      <template #icon>
+                        <CheckOutlined />
+                      </template>
+                    </a-button>
+                  </div>
+                  <div style="margin-top: 12px; text-align: right;">
+                    <a @click="joinRoomHide">关闭</a>
+                  </div>
+                </div>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </a-tooltip>
       </div>
     </div>
 
@@ -94,7 +90,8 @@
           <div class="user-info-icon">
             <!-- TODO 实现语音的开启和关闭 -->
             <!-- <AudioMutedOutlined class="info-icon" /> -->
-            <AudioSync class="info-icon" :user-id="userAccountDetailFromState.id" :stomp-client="(stompClient as Client)" :room-code="roomCode" />
+            <AudioSync class="info-icon" :user-id="userAccountDetailFromState.id"
+              :stomp-client="(stompClient as Client)" :room-code="roomCode" />
             <SettingOutlined class="info-icon" @click="showSettingsDrawer" />
           </div>
         </div>
@@ -110,11 +107,10 @@
 
       <!-- 视频部分 -->
       <div class="chat-content">
-        <!-- <video class="chat-content-video" controls
-          src="D:\Data\code\web_2024\WatchTogether\FormalProject\WatchTogetherFrontend\public\mv.mp4" muted>
-          您的浏览器不支持视频播放。
-        </video> -->
-        <div v-if="!stompClient" class="chat-content-video-none">WebSocket未连接</div>
+        <div v-if="!stompClient" class="chat-content-video-none">
+          <disconnect-outlined style="font-size: 64px; color: #d9d9d9;" />
+          <span>WebSocket未连接，请先创建或加入房间</span>
+        </div>
         <!-- 不用管这个error -->
         <VideoPlayer v-if="stompClient" class="chat-content-video" :stompClient="(stompClient as Client)"
           :roomCode="roomCode" />
@@ -179,7 +175,7 @@
 
 <script lang="ts" setup>
 import { ref, onBeforeUnmount, onMounted } from 'vue';
-import { AudioOutlined, PhoneOutlined, SettingOutlined, PlusCircleOutlined, CheckOutlined, UserOutlined, SearchOutlined, LoadingOutlined, PlusOutlined } from "@ant-design/icons-vue"
+import { AudioOutlined, PhoneOutlined, SettingOutlined, PlusCircleOutlined, CheckOutlined, UserOutlined, SearchOutlined, LoadingOutlined, PlusOutlined, DisconnectOutlined } from "@ant-design/icons-vue"
 import { createRoom, joinRoom, getUserDetailsInRoom } from '../api/wt/roomApi.ts';
 import { notification, DrawerProps, UploadChangeParam, message, UploadFile } from 'ant-design-vue';
 import { LOCAL_WEBSOCKET_SERVER_URL } from '../utils/ipAddress.ts';
@@ -511,84 +507,118 @@ const onJoinRoom = async () => {
   display: flex;
   flex-direction: row;
   height: 100vh;
-  background-color: #fff5f5;
+  background-color: #f9fafb;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .sidebar {
-  min-width: 80px;
-  background-color: #fff5f5;
-  padding: 20px 0;
+  min-width: 72px;
+  background-color: #ffffff;
+  padding: 24px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #e1e1e1;
-  border-right: 1px solid #f5d5d5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  z-index: 10;
 }
 
 .sidebar .logo {
   font-size: 24px;
   font-weight: bold;
-  margin-bottom: 20px;
-  color: #1b1c1c;
+  margin-bottom: 32px;
+  color: #1890ff;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #e6f7ff;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+
+.sidebar .logo:hover {
+  transform: scale(1.05);
 }
 
 .sidebar .icon {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 20px;
-  background-color: #a5a9e4;
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 24px;
+  background-color: #f0f5ff;
+  border-radius: 12px;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #fff;
+  color: #1890ff;
   cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar .icon:hover {
+  background-color: #e6f7ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
 }
 
 .channel {
-  min-width: 240px;
-  background-color: #fee7e7;
+  min-width: 260px;
+  background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
-
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  z-index: 5;
 }
 
 .channel-list {
-  color: #1e1d1d;
+  color: #333;
   overflow-y: auto;
+  padding: 16px 12px;
+  flex: 1;
 }
 
 .channel-list::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+}
+
+.channel-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.channel-list::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
+  border-radius: 4px;
 }
 
 .channel-item {
-  margin: 5px;
-  padding: 12px;
-  border-radius: 10px;
-  margin-top: 10px;
-  background-color: #f5d4d4;
-  border-bottom: 1px solid #f1cece;
-  transition: background-color 0.3s;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background-color: #f5f5f5;
+  transition: all 0.3s;
 }
 
 .channel-list .channel-item:hover {
-  background-color: #e8dede;
+  background-color: #e6f7ff;
+  transform: translateY(-1px);
 }
 
 .other-user-info {
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   display: flex;
 }
 
 .other-user-info-username {
-  font-size: small;
-  color: #6e6a6a;
-  margin-left: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #262626;
+  margin-left: 12px;
   flex-grow: 1;
-  min-width: 100px
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .other-user-info-icon {
@@ -597,133 +627,158 @@ const onJoinRoom = async () => {
 
 .other-user-info-icon .other-info-icon {
   margin-left: 10px;
+  color: #8c8c8c;
+  font-size: 16px;
+  transition: color 0.3s;
+}
+
+.other-user-info-icon .other-info-icon:hover {
+  color: #1890ff;
 }
 
 .current-user {
-  margin-top: auto;
-  background-color: #f9ecec;
-  padding: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid #333;
+  background-color: #fafafa;
+  padding: 16px;
+  border-top: 1px solid #f0f0f0;
 }
 
 .current-user .user-info {
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
   align-items: center;
-  justify-content: center;
 }
 
 .user-info-username {
-  font-size: small;
-  color: #6e6a6a;
-  margin-left: 6px;
-  min-width: 100px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #262626;
+  margin-left: 12px;
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-info-icon {
   margin-left: auto;
+  display: flex;
 }
 
 .user-info-icon .info-icon {
   cursor: pointer;
-  margin-left: 10px;
-  flex-grow: 1;
-  transition: 0.3s;
+  margin-left: 16px;
+  font-size: 18px;
+  color: #595959;
+  transition: all 0.3s;
 }
 
 .user-info-icon .info-icon:hover {
-  color: #6e6a6a;
-}
-
-.current-user button {
-  background: none;
-  color: #ff9800;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
+  color: #1890ff;
+  transform: scale(1.1);
 }
 
 .main-chat {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  background-color: #fff5f5;
-  color: #fff5f5;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+  background-color: #f9fafb;
 }
 
 .chat-header {
   display: flex;
-  justify-content: space-between;
-  padding: 15px;
-  margin: 5px;
-  border-radius: 15px;
-  background-color: #ecdede;
-  border-bottom: 1px solid #333;
-  align-items: center;
   justify-content: center;
+  padding: 16px;
+  margin: 16px 16px 0;
+  border-radius: 12px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .chat-header .title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #030303;
+  font-size: 16px;
+  font-weight: 600;
+  color: #262626;
 }
-
 
 .chat-content {
   flex-grow: 1;
-  padding: 20px;
-  overflow-y: auto;
-  background-color: #fbe9e9;
-  border-radius: 15px;
-  margin: 10px;
+  margin: 16px;
+  border-radius: 12px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   display: flex;
   justify-content: center;
   align-items: center;
-  object-fit: cover;
-}
-
-.chat-content::-webkit-scrollbar {
-  display: none;
+  overflow: hidden;
 }
 
 .chat-content-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* 根据需要调整为 contain 或 fill */
-  border-radius: 15px;
-  /* 保持圆角样式 */
 }
 
 .chat-content-video-none {
-  color: #7f7a7a;
-  font-size: large;
-  font-weight: bold;
-  object-fit: cover;
-  /* 根据需要调整为 contain 或 fill */
-  border-radius: 15px;
-  /* 保持圆角样式 */
-}
-
-.settings-drawer {
+  color: #8c8c8c;
+  font-size: 16px;
+  font-weight: 500;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.chat-content-video-none:before {
+  content: "";
+  width: 64px;
+  height: 64px;
+  background-color: #f0f0f0;
+  border-radius: 50%;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.settings-drawer-account {
-  cursor: auto;
+.settings-drawer-account,
+.settings-drawer-details {
+  border-radius: 12px;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  overflow: hidden;
 }
 
-.settings-drawer-details {
-  margin-top: 20px;
-  cursor: auto;
+.settings-drawer-account:hover,
+.settings-drawer-details:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Ant Design overrides and custom classes */
+:deep(.ant-upload) {
+  border-radius: 50%;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+:deep(.ant-upload:hover) {
+  transform: scale(1.05);
+}
+
+:deep(.ant-avatar) {
+  border: 2px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+:deep(.ant-btn) {
+  border-radius: 8px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.02);
+}
+
+:deep(.ant-input) {
+  border-radius: 8px;
+}
+
+:deep(.ant-drawer-content) {
+  border-radius: 16px 0 0 16px;
+  overflow: hidden;
 }
 </style>
