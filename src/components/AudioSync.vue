@@ -1,5 +1,5 @@
 <template>
-  <!-- 显示正在录音的图标 -->
+  <!-- 显示正在通话的图标 -->
   <AudioOutlined v-show="isStreaming === true" :class="$attrs.class" class="icon" @click="toggleStreaming" />
   <!-- 显示已静音的图标 -->
   <AudioMutedOutlined v-show="isStreaming === false" :class="$attrs.class" class="icon" @click="toggleStreaming" />
@@ -8,11 +8,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, reactive } from 'vue';
 import { AudioOutlined, AudioMutedOutlined, PhoneOutlined } from '@ant-design/icons-vue';
 import type { Client, IMessage } from '@stomp/stompjs';
-import * as RecordRTC from 'recordrtc';
-import { Buffer } from 'buffer';
 
 interface AudioPlayerProps {
   stompClient: Client | null;
@@ -23,15 +21,14 @@ interface AudioPlayerProps {
 const props = defineProps<AudioPlayerProps>();
 
 const isStreaming = ref(false);
-let audioContext: AudioContext | null = null;
-let mediaStream: MediaStream | null = null;
-let audioWorkletNode: AudioWorkletNode | null = null;
+let localStream: MediaStream | null = null;
 
-// Audio processing constants
-const SAMPLE_RATE = 16000;
-const BUFFER_SIZE = 128; // Adjust for latency/CPU usage
-const CHANNELS = 1;
+// WebRTC 连接管理
+const peerConnections = reactive<Record<string, RTCPeerConnection>>({});
+const remoteStreams = reactive<Record<string, MediaStream>>({});
 
+// 音频输出元素 (动态创建)
+const audioElements: Record<string, HTMLAudioElement> = {};
 
 const toggleStreaming = async () => {
   isStreaming.value = !isStreaming.value;
@@ -42,142 +39,312 @@ const toggleStreaming = async () => {
   }
 };
 
-
 const startStreaming = async () => {
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
-
-    await audioContext.audioWorklet.addModule('/audio-processor.js');
-
-    const source = audioContext.createMediaStreamSource(mediaStream);
-    audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor', {
-      processorOptions: { sampleRate: SAMPLE_RATE, channels: CHANNELS, bufferSize: BUFFER_SIZE }
+    // 获取用户麦克风权限，启用回音消除和噪音抑制
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      },
+      video: false
     });
 
-    audioWorkletNode.port.onmessage = (event) => {
-      const audioData = event.data;
-      if (audioData) {
-        let arrayBuffer: ArrayBuffer;
-        if (audioData instanceof ArrayBuffer) {
-          arrayBuffer = audioData;
-        } else if (audioData.data instanceof ArrayBuffer) {
-          arrayBuffer = audioData.data;
-        } else {
-          console.error("错误：audioData 不是 ArrayBuffer 类型，而是", audioData.constructor.name);
-          return;
-        }
+    // 订阅信令消息
+    subscribeToSignalingMessages();
 
-        const uint8Array = new Uint8Array(arrayBuffer);
-        console.log("Uint8Array (before encoding):", uint8Array.slice(0, 20)); // Log more bytes
-        console.log("Uint8Array length:", uint8Array.length);
+    // 广播加入房间消息
+    broadcastJoinRoom();
 
-        const base64Audio = Buffer.from(uint8Array).toString('base64');
-        console.log("Base64 (sent):", base64Audio.substring(0, 200) + "..."); // Log more characters
-        console.log("Base64 length:", base64Audio.length);
-
-        props.stompClient?.publish({
-          destination: `/app/audio/${props.roomCode}`,
-          body: JSON.stringify({ audioData: base64Audio, senderId: props.userId }),
-        });
-      }
-    };
-
-    source.connect(audioWorkletNode).connect(audioContext.destination);
-    subscribeToAudioMessages();
   } catch (error) {
-    console.error('Error starting streaming:', error);
+    console.error('获取麦克风失败:', error);
     isStreaming.value = false;
   }
 };
 
 const stopStreaming = () => {
-  if (audioWorkletNode) {
-    audioWorkletNode.disconnect();
-    audioWorkletNode = null;
+  // 停止所有 WebRTC 连接
+  Object.keys(peerConnections).forEach(peerId => {
+    closePeerConnection(peerId);
+  });
+
+  // 停止本地音频流
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
   }
-  if (mediaStream) {
-    mediaStream.getTracks().forEach(track => track.stop());
-    mediaStream = null;
-  }
-  if (audioContext) {
-    audioContext.close();
-    audioContext = null;
-  }
+
+  // 广播离开房间消息
+  broadcastLeaveRoom();
 };
 
-const playAudio = async (audioData: string) => {
+// 创建与特定用户的 WebRTC 连接
+const createPeerConnection = (targetUserId: string, isInitiator = false) => {
   try {
-    if (!audioContext) {
-      audioContext = new AudioContext({ sampleRate: 16000 });
+    // 创建新的 RTCPeerConnection
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    });
+
+    // 添加本地音轨到连接
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        pc.addTrack(track, localStream!);
+      });
     }
 
-    console.log("接收到的 Base64 字符串 (前 100 字符):", audioData.substring(0, 100) + "...");
-    console.log("Base64 字符串长度:", audioData.length);
+    // 处理 ICE 候选
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        sendSignalingMessage({
+          type: 'ice-candidate',
+          candidate: event.candidate,
+          targetUserId
+        });
+      }
+    };
 
-    try {
-      const decodedAudio = Buffer.from(audioData, 'base64');
-      console.log("Base64 解码后的 byte[] 长度:", decodedAudio.length);
-      const uint8Array = new Uint8Array(decodedAudio);
-      console.log("解码后的 Uint8Array 前 10 个字节：", uint8Array.slice(0, 10));
+    // 处理连接状态变化
+    pc.onconnectionstatechange = () => {
+      console.log(`与用户 ${targetUserId} 的连接状态: ${pc.connectionState}`);
+    };
 
-      const audioBuffer = await audioContext.decodeAudioData(decodedAudio.buffer);
-      const source = audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContext.destination);
-      source.start(0);
-      console.log("音频播放成功！");
-    } catch (decodeError) {
-      console.error("Buffer.from 解码失败:", decodeError);
-      // 移除 atob 尝试，因为它并不能解决根本问题
+    // 处理远程音频流
+    pc.ontrack = (event) => {
+      console.log(`收到用户 ${targetUserId} 的音频流`);
+      const remoteStream = event.streams[0];
+      remoteStreams[targetUserId] = remoteStream;
+
+      // 创建音频元素播放远程音频
+      createAudioElement(targetUserId, remoteStream);
+    };
+
+    // 存储连接
+    peerConnections[targetUserId] = pc;
+
+    // 如果是发起方，创建并发送 offer
+    if (isInitiator) {
+      createAndSendOffer(targetUserId, pc);
     }
+
+    return pc;
   } catch (error) {
-    console.error("播放音频时发生错误:", error);
+    console.error(`创建与用户 ${targetUserId} 的连接失败:`, error);
+    return null;
   }
 };
 
+// 创建并发送 offer
+const createAndSendOffer = async (targetUserId: string, pc: RTCPeerConnection) => {
+  try {
+    const offer = await pc.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: false
+    });
 
-const subscribeToAudioMessages = () => {
-  props.stompClient?.subscribe(`/topic/audio-sync/${props.roomCode}`, (message: IMessage) => {
-    const audioMessage = JSON.parse(message.body);
-    playAudio(audioMessage.audioData); // Pass the base64 string directly
+    await pc.setLocalDescription(offer);
+
+    sendSignalingMessage({
+      type: 'offer',
+      sdp: pc.localDescription,
+      targetUserId
+    });
+  } catch (error) {
+    console.error(`创建 offer 失败:`, error);
+  }
+};
+
+// 处理收到的 offer
+const handleOffer = async (offer: RTCSessionDescriptionInit, fromUserId: string) => {
+  let pc: any = peerConnections[fromUserId];
+  if (!pc) {
+    pc = createPeerConnection(fromUserId);
+  }
+
+  if (pc) {
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      sendSignalingMessage({
+        type: 'answer',
+        sdp: pc.localDescription,
+        targetUserId: fromUserId
+      });
+    } catch (error) {
+      console.error(`处理 offer 失败:`, error);
+    }
+  }
+};
+
+// 处理收到的 answer
+const handleAnswer = async (answer: RTCSessionDescriptionInit, fromUserId: string) => {
+  const pc = peerConnections[fromUserId];
+  if (pc) {
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(answer));
+    } catch (error) {
+      console.error(`处理 answer 失败:`, error);
+    }
+  }
+};
+
+// 处理收到的 ICE 候选
+const handleIceCandidate = (candidate: RTCIceCandidateInit, fromUserId: string) => {
+  const pc = peerConnections[fromUserId];
+  if (pc) {
+    try {
+      pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (error) {
+      console.error(`添加 ICE 候选失败:`, error);
+    }
+  }
+};
+
+// 关闭与特定用户的连接
+const closePeerConnection = (userId: string) => {
+  const pc = peerConnections[userId];
+  if (pc) {
+    pc.close();
+    delete peerConnections[userId];
+  }
+
+  // 移除音频元素
+  removeAudioElement(userId);
+
+  // 清除远程流
+  if (remoteStreams[userId]) {
+    delete remoteStreams[userId];
+  }
+};
+
+// 创建音频元素播放远程音频
+const createAudioElement = (userId: string, stream: MediaStream) => {
+  // 如果已存在，先移除
+  removeAudioElement(userId);
+
+  // 创建新的音频元素
+  const audioEl = document.createElement('audio');
+  audioEl.autoplay = true;
+  audioEl.srcObject = stream;
+  audioEl.id = `remote-audio-${userId}`;
+
+  // 添加到文档中但不可见
+  audioEl.style.display = 'none';
+  document.body.appendChild(audioEl);
+
+  // 保存引用
+  audioElements[userId] = audioEl;
+};
+
+// 移除音频元素
+const removeAudioElement = (userId: string) => {
+  const audioEl = audioElements[userId];
+  if (audioEl) {
+    document.body.removeChild(audioEl);
+    delete audioElements[userId];
+  }
+};
+
+// 广播加入房间消息
+const broadcastJoinRoom = () => {
+  sendSignalingMessage({
+    type: 'join-room',
+    userId: props.userId
   });
 };
 
+// 广播离开房间消息
+const broadcastLeaveRoom = () => {
+  sendSignalingMessage({
+    type: 'leave-room',
+    userId: props.userId
+  });
+};
 
-const testBase64EncodingDecoding = async () => {
-  try {
-    // 1. Create a test ArrayBuffer (replace with actual audio data if available)
-    const testArrayBuffer = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).buffer; // Example data
-
-    // 2. Encode to Base64
-    const testBase64 = Buffer.from(new Uint8Array(testArrayBuffer)).toString('base64');
-    console.log("Test Base64 (sent):", testBase64);
-
-    // 3. Decode from Base64
-    const decodedTestBuffer = Buffer.from(testBase64, 'base64').buffer;
-    console.log("Test Base64 decoded successfully. Length:", decodedTestBuffer.byteLength);
-
-    // 4. Try to decode as audio (if you have a test audio context)
-    if (audioContext) {
-      const testAudioBuffer = await audioContext.decodeAudioData(decodedTestBuffer);
-      console.log("Test audio decoded successfully!");
-    }
-
-  } catch (error) {
-    console.error("Test failed:", error);
+// 发送信令消息
+const sendSignalingMessage = (message: any) => {
+  if (props.stompClient?.connected) {
+    props.stompClient.publish({
+      destination: `/app/rtc-signaling/${props.roomCode}`,
+      body: JSON.stringify({
+        ...message,
+        senderId: props.userId
+      })
+    });
   }
 };
 
+// 订阅信令消息
+const subscribeToSignalingMessages = () => {
+  props.stompClient?.subscribe(`/topic/rtc-signaling/${props.roomCode}`, (message: IMessage) => {
+    const signalData = JSON.parse(message.body);
+
+    // 忽略自己发送的消息
+    if (signalData.senderId === props.userId) {
+      return;
+    }
+
+    console.log('收到信令消息:', signalData.type, '来自用户:', signalData.senderId);
+
+    switch (signalData.type) {
+      case 'join-room':
+        // 新用户加入，向其发送 offer
+        createPeerConnection(signalData.senderId, true);
+        break;
+
+      case 'leave-room':
+        // 用户离开，关闭连接
+        closePeerConnection(signalData.senderId);
+        break;
+
+      case 'offer':
+        // 收到 offer，创建 answer
+        handleOffer(signalData.sdp, signalData.senderId);
+        break;
+
+      case 'answer':
+        // 收到 answer
+        handleAnswer(signalData.sdp, signalData.senderId);
+        break;
+
+      case 'ice-candidate':
+        // 收到 ICE 候选
+        handleIceCandidate(signalData.candidate, signalData.senderId);
+        break;
+    }
+  });
+};
+
 onMounted(() => {
-  testBase64EncodingDecoding(); // Call the test function
+  // 组件挂载时，如果已经设置为流式传输，则开始流式传输
+  if (isStreaming.value) {
+    startStreaming();
+  }
 });
 
 onUnmounted(() => {
-  stopStreaming(); // Stop streaming on unmount
+  // 关闭所有连接
+  Object.keys(peerConnections).forEach(peerId => {
+    closePeerConnection(peerId);
+  });
+
+  // 停止本地流
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+  }
+
+  // 清理所有音频元素
+  Object.keys(audioElements).forEach(userId => {
+    removeAudioElement(userId);
+  });
 });
 </script>
-
 
 <style scoped>
 .icon {
