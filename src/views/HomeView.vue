@@ -744,13 +744,14 @@ const onJoinRoom = async () => {
 .user-info-icon {
   margin-left: auto;
   display: flex;
+  align-items: center;
 }
 
 .user-info-icon .info-icon {
   cursor: pointer;
   margin-left: 16px;
   font-size: 20px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(73, 71, 71, 0.7);
   transition: all 0.3s;
   padding: 6px;
   border-radius: 50%;
