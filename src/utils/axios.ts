@@ -20,7 +20,6 @@ axiosInstance.interceptors.request.use(
       if (!config.headers) {
         config.headers = {} as AxiosRequestHeaders;
       }
-
       // 如果 token 存在，添加到 headers 中
       if (token) {
         (config.headers as AxiosRequestHeaders)['token'] = token;
