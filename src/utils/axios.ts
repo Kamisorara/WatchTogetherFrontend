@@ -12,7 +12,7 @@ axiosInstance.interceptors.request.use(
   (config: any) => {
     // 登录和注册等操作不需要进行携带token
     if (config.url.includes('/api/sys/login') || config.url.includes("/api/sys/register")) {
-      delete config.headers['token'];
+      delete config.headers['Authorization'];
     } else {
       const token = localStorage.getItem('token'); // 从 localStorage 获取 token
 

@@ -244,7 +244,7 @@ let userAccountDetailFromState = ref<userDetailsMessage>({
 const avatarFileList = ref([]);
 const avatarUploading = ref<boolean>(false);
 const uploadHeaders = ref({
-  token: localStorage.getItem("token")
+  Authorization: `${localStorage.getItem("token")}`
 });
 
 const handleUploadChange = (info: UploadChangeParam) => {
