@@ -148,7 +148,7 @@
       <!-- 头像 -->
       <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 30px;">
         <a-upload style="cursor: pointer;" v-model:file-list="avatarFileList" name="file" :show-upload-list="false"
-          action="http://localhost:8081/api/sys/fastdfs-upload" :before-upload="beforeUpload" :headers="uploadHeaders"
+          action="http://localhost:8081/api/sys/minio-upload" :before-upload="beforeUpload" :headers="uploadHeaders"
           @change="handleUploadChange">
           <a-avatar v-if="userAccountDetailFromState.userAvatar !== ''" :size="80"
             :src="userAccountDetailFromState.userAvatar">
